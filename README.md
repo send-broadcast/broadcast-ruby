@@ -6,13 +6,35 @@ Works with [sendbroadcast.com](https://sendbroadcast.com) or any self-hosted Bro
 
 ## Installation
 
+Add to your Gemfile:
+
 ```ruby
 gem 'broadcast-ruby'
 ```
 
-## Quick Start
+For plain Ruby scripts (non-Rails):
 
 ```ruby
+require 'broadcast'
+```
+
+## Getting Your API Token
+
+1. Log in to your Broadcast dashboard
+2. Go to **Settings > API Keys**
+3. Click **New API Key**
+4. Name it, select the permissions you need (see [Permissions](#api-token-permissions) below), and save
+5. Copy the token
+
+## Quick Start
+
+**In a Rails app?** Jump to [Rails ActionMailer Integration](#rails-actionmailer-integration) -- you don't need to use the client directly.
+
+**In a plain Ruby script or non-Rails app?** Use the client:
+
+```ruby
+require 'broadcast'
+
 client = Broadcast::Client.new(
   api_token: 'your-token',
   host: 'https://sendbroadcast.com'  # or your self-hosted URL
@@ -48,6 +70,21 @@ All methods return parsed JSON as Ruby Hashes with string keys.
 
 In a Rails app, the gem auto-registers a `:broadcast` delivery method. Your existing mailers work unchanged.
 
+First, store your API token in Rails credentials:
+
+```bash
+bin/rails credentials:edit
+```
+
+Add:
+
+```yaml
+broadcast:
+  api_token: your-token-here
+```
+
+Then configure production to use Broadcast:
+
 ```ruby
 # config/environments/production.rb
 config.action_mailer.delivery_method = :broadcast
@@ -76,13 +113,44 @@ config.action_mailer.delivery_method = :letter_opener
 config.action_mailer.delivery_method = :test
 ```
 
+### Migrating from Postmark
+
+Replace in your Gemfile:
+
+```diff
+- gem 'postmark-rails'
++ gem 'broadcast-ruby'
+```
+
+Replace in `config/environments/production.rb`:
+
+```diff
+- config.action_mailer.delivery_method = :postmark
+- config.action_mailer.postmark_settings = {
+-   api_token: Rails.application.credentials.dig(:postmark, :api_token)
+- }
++ config.action_mailer.delivery_method = :broadcast
++ config.action_mailer.broadcast_settings = {
++   api_token: Rails.application.credentials.dig(:broadcast, :api_token),
++   host: 'https://sendbroadcast.com'
++ }
+```
+
+Your mailer classes, views, and tests stay exactly the same.
+
+### Migrating from SendGrid / Mailgun
+
+Same pattern -- swap the gem and the delivery config. No changes to mailers.
+
 ---
 
 ## Transactional Email
 
 Send one-off emails triggered by application events. Transactional emails bypass unsubscribe status (for password resets, receipts, order confirmations, etc.).
 
-The sender address is configured at the channel level in your Broadcast instance — there is no `from` parameter.
+The sender address is configured at the channel level in your Broadcast instance -- there is no `from` parameter.
+
+**Required permissions:** `transactionals_read`, `transactionals_write`
 
 ```ruby
 # Send an email
@@ -119,6 +187,8 @@ email['queue_at']   # => '2026-03-17T07:59:58Z'
 ## Subscribers
 
 Manage your contact list. Subscribers can have tags and custom data fields for segmentation and personalization.
+
+**Required permissions:** `subscribers_read`, `subscribers_write`
 
 ```ruby
 # List subscribers (paginated, 250 per page)
@@ -188,7 +258,7 @@ client.subscribers.unsubscribe('jane@example.com')
 # Resubscribe (clears unsubscribed status AND activates)
 client.subscribers.resubscribe('jane@example.com')
 
-# Redact — GDPR "right to be forgotten" (irreversible)
+# Redact -- GDPR "right to be forgotten" (irreversible)
 # Removes PII but preserves aggregate campaign statistics
 client.subscribers.redact('jane@example.com')
 ```
@@ -198,6 +268,8 @@ client.subscribers.redact('jane@example.com')
 ## Sequences
 
 Automated drip campaigns. Add subscribers to a sequence and they flow through the steps automatically.
+
+**Required permissions:** `sequences_read`, `sequences_write` (also `subscribers_read`, `subscribers_write` for enrollment)
 
 ```ruby
 # List all sequences
@@ -264,7 +336,7 @@ client.sequences.list_steps(sequence_id)
 # Get a single step
 step = client.sequences.get_step(sequence_id, step_id)
 
-# Create steps — each step needs an action, label, and parent_id
+# Create steps -- each step needs an action, label, and parent_id
 # The parent_id links steps into a tree (entry point is the sequence's root step)
 
 # Delay step (seconds)
@@ -312,6 +384,8 @@ client.sequences.delete_step(sequence_id, step_id)
 ## Broadcasts
 
 One-time email campaigns sent to your subscriber list or targeted segments.
+
+**Required permissions:** `broadcasts_read`, `broadcasts_write`
 
 ```ruby
 # List broadcasts
@@ -384,6 +458,8 @@ client.broadcasts.statistics_links(1, sort: 'clicks', order: 'desc')
 
 Define subscriber groups using rules for targeted broadcasts and sequence enrollment.
 
+**Required permissions:** `segments_read`, `segments_write`
+
 ```ruby
 # List segments
 result = client.segments.list
@@ -435,6 +511,8 @@ client.segments.delete(1)
 
 Reusable email templates with [Liquid](https://shopify.github.io/liquid/) variable support for personalization (e.g. `{{first_name}}`, `{{email}}`).
 
+**Required permissions:** `templates_read`, `templates_write`
+
 ```ruby
 # List all templates
 result = client.templates.list
@@ -469,6 +547,8 @@ client.templates.delete(1)
 
 Receive real-time notifications when events occur (email delivered, subscriber created, sequence completed, etc.).
 
+**Required permissions:** `webhook_endpoints_read`, `webhook_endpoints_write`
+
 ```ruby
 # List endpoints
 result = client.webhook_endpoints.list
@@ -487,10 +567,10 @@ result = client.webhook_endpoints.create(
   ],
   retries_to_attempt: 6
 )
-# IMPORTANT: Save the secret from the response — it is only shown once
+# IMPORTANT: Save the secret from the response -- it is only shown once
 secret = result['secret']
 
-# Update (url and secret cannot be changed — create a new endpoint instead)
+# Update (url and secret cannot be changed -- create a new endpoint instead)
 client.webhook_endpoints.update(1, active: false)
 client.webhook_endpoints.update(1, event_types: ['email.delivered', 'email.opened'])
 
@@ -517,16 +597,35 @@ result['data']  # => [{'id' => 1, 'event_type' => 'email.sent', 'response_status
 
 ### Webhook Signature Verification
 
-All incoming webhooks are signed with HMAC-SHA256. Verify them in your controller:
+All incoming webhooks are signed with HMAC-SHA256. Here's a complete Rails controller:
 
 ```ruby
-Broadcast::Webhook.verify(
-  request.raw_post,                                    # raw request body
-  request.headers['broadcast-webhook-signature'],      # v1,<base64 signature>
-  request.headers['broadcast-webhook-timestamp'],      # unix timestamp
-  secret: ENV['BROADCAST_WEBHOOK_SECRET']
-)
-# => true or false
+class WebhooksController < ApplicationController
+  skip_before_action :verify_authenticity_token
+
+  def create
+    payload = request.raw_post
+    signature = request.headers['broadcast-webhook-signature']
+    timestamp = request.headers['broadcast-webhook-timestamp']
+
+    unless Broadcast::Webhook.verify(payload, signature, timestamp,
+                                     secret: ENV['BROADCAST_WEBHOOK_SECRET'])
+      head :unauthorized
+      return
+    end
+
+    event = JSON.parse(payload)
+
+    case event['type']
+    when 'email.delivered'
+      # handle delivery
+    when 'subscriber.unsubscribed'
+      # handle unsubscribe
+    end
+
+    head :ok
+  end
+end
 ```
 
 The signature is computed as `HMAC-SHA256(timestamp + "." + payload, secret)`. Timestamps older than 5 minutes are rejected to prevent replay attacks.
@@ -535,22 +634,74 @@ The signature is computed as `HMAC-SHA256(timestamp + "." + payload, secret)`. T
 
 ## Error Handling
 
-All API errors inherit from `Broadcast::Error`:
+All API errors inherit from `Broadcast::Error`. Put specific errors before general ones:
 
 ```ruby
 begin
   client.send_email(to: 'user@example.com', subject: 'Hi', body: 'Hello')
-rescue Broadcast::AuthenticationError  # 401 — invalid or expired API token
-rescue Broadcast::NotFoundError        # 404 — resource does not exist
-rescue Broadcast::ValidationError      # 422 — missing or invalid parameters
-rescue Broadcast::RateLimitError       # 429 — exceeded 120 requests/minute
+rescue Broadcast::AuthenticationError  # 401 -- invalid or expired API token
+rescue Broadcast::NotFoundError        # 404 -- resource does not exist
+rescue Broadcast::ValidationError      # 422 -- missing or invalid parameters
+rescue Broadcast::RateLimitError       # 429 -- exceeded 120 requests/minute
 rescue Broadcast::TimeoutError         # connection or read timeout
 rescue Broadcast::APIError             # 5xx or unexpected status codes
-rescue Broadcast::DeliveryError        # ActionMailer delivery wrapper (wraps any of the above)
+rescue Broadcast::DeliveryError        # ActionMailer wrapper (wraps any of the above)
 end
 ```
 
-Server errors (5xx) and timeouts are automatically retried with linear backoff. Client errors (401, 404, 422, 429) are raised immediately. `DeliveryError` is only raised from the ActionMailer delivery method — it wraps the underlying API error.
+Server errors (5xx) and timeouts are automatically retried with linear backoff. Client errors (401, 404, 422, 429) are raised immediately. `DeliveryError` is only raised from the ActionMailer delivery method -- it wraps the underlying API error.
+
+---
+
+## API Token Permissions
+
+Each token can be scoped to specific resources. The ActionMailer delivery method only needs transactional permissions. Use the minimum permissions your integration requires.
+
+| Resource | Read permission | Write permission |
+|----------|----------------|------------------|
+| Transactional Emails | `transactionals_read` -- get delivery status | `transactionals_write` -- send emails |
+| Subscribers | `subscribers_read` -- list, find | `subscribers_write` -- create, update, tag, deactivate, unsubscribe, redact |
+| Sequences | `sequences_read` -- list, get, list steps | `sequences_write` -- create, update, delete, manage steps, enroll subscribers |
+| Broadcasts | `broadcasts_read` -- list, get, statistics | `broadcasts_write` -- create, update, delete, send, schedule |
+| Segments | `segments_read` -- list, get | `segments_write` -- create, update, delete |
+| Templates | `templates_read` -- list, get | `templates_write` -- create, update, delete |
+| Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
+
+---
+
+## Troubleshooting
+
+### `Broadcast::AuthenticationError` (401)
+
+- **Wrong token:** Double-check you copied the full token from your Broadcast dashboard.
+- **Wrong host:** If you're self-hosting, make sure `host` points to your Broadcast instance, not `sendbroadcast.com`.
+- **Missing permissions:** Your token may not have the required permissions for the resource you're accessing. Check the [permissions table](#api-token-permissions).
+
+### `Broadcast::ValidationError` (422)
+
+- **Missing required fields:** Check the parameters table for the method you're calling.
+- **Duplicate subscriber:** Creating a subscriber with an email that already exists returns 422. Use `find` first or handle the error.
+- **Duplicate template label:** Template labels must be unique within a channel.
+
+### `Broadcast::NotFoundError` (404)
+
+- **Wrong ID:** The resource ID doesn't exist or belongs to a different channel.
+- **Subscriber not found:** `subscribers.find(email: '...')` raises 404 if no subscriber matches.
+
+### `Broadcast::TimeoutError`
+
+- **Slow network:** Increase `timeout` and `open_timeout` in client options.
+- **Large response:** Template list responses can be large if templates contain full HTML bodies.
+
+### `Broadcast::RateLimitError` (429)
+
+- **Rate limit:** Broadcast allows 120 requests per minute per token. The gem does not auto-retry on 429 -- back off and retry in your application code.
+
+### ActionMailer emails not sending
+
+- **Check delivery method:** Ensure `config.action_mailer.delivery_method = :broadcast` is set in the right environment file (not development or test).
+- **Check credentials:** Run `bin/rails credentials:show` and verify `broadcast.api_token` is set.
+- **Check logs:** Set `debug: true` in `broadcast_settings` to see request/response details.
 
 ## License
 
