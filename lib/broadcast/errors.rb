@@ -16,4 +16,6 @@ module Broadcast
   class ValidationError < Error; end
 
   class TimeoutError < Error; end
+
+  class DeliveryError < Error; end
 end

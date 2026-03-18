@@ -13,5 +13,11 @@ require_relative 'broadcast/resources/segments'
 require_relative 'broadcast/resources/templates'
 require_relative 'broadcast/resources/webhook_endpoints'
 
+# ActionMailer integration — only loaded when Rails is present
+if defined?(Rails::Railtie)
+  require_relative 'broadcast/delivery_method'
+  require_relative 'broadcast/railtie'
+end
+
 module Broadcast
 end
