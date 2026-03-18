@@ -44,6 +44,40 @@ All methods return parsed JSON as Ruby Hashes with string keys.
 
 ---
 
+## Rails ActionMailer Integration
+
+In a Rails app, the gem auto-registers a `:broadcast` delivery method. Your existing mailers work unchanged.
+
+```ruby
+# config/environments/production.rb
+config.action_mailer.delivery_method = :broadcast
+config.action_mailer.broadcast_settings = {
+  api_token: Rails.application.credentials.dig(:broadcast, :api_token),
+  host: 'https://sendbroadcast.com'
+}
+```
+
+All your mailers just work:
+
+```ruby
+UserMailer.welcome(user).deliver_later
+PasswordsMailer.reset(user).deliver_now
+```
+
+The delivery method extracts the HTML body (falling back to text), subject, recipient, and reply-to from the rendered email and sends it via Broadcast's transactional API. Delivery errors raise `Broadcast::DeliveryError`, which lets Active Job (Solid Queue, Sidekiq, etc.) retry automatically.
+
+Development and test environments are unaffected:
+
+```ruby
+# config/environments/development.rb
+config.action_mailer.delivery_method = :letter_opener
+
+# config/environments/test.rb
+config.action_mailer.delivery_method = :test
+```
+
+---
+
 ## Transactional Email
 
 Send one-off emails triggered by application events. Transactional emails bypass unsubscribe status (for password resets, receipts, order confirmations, etc.).
@@ -512,10 +546,11 @@ rescue Broadcast::ValidationError      # 422 — missing or invalid parameters
 rescue Broadcast::RateLimitError       # 429 — exceeded 120 requests/minute
 rescue Broadcast::TimeoutError         # connection or read timeout
 rescue Broadcast::APIError             # 5xx or unexpected status codes
+rescue Broadcast::DeliveryError        # ActionMailer delivery wrapper (wraps any of the above)
 end
 ```
 
-Server errors (5xx) and timeouts are automatically retried with linear backoff. Client errors (401, 404, 422, 429) are raised immediately.
+Server errors (5xx) and timeouts are automatically retried with linear backoff. Client errors (401, 404, 422, 429) are raised immediately. `DeliveryError` is only raised from the ActionMailer delivery method — it wraps the underlying API error.
 
 ## License
 
