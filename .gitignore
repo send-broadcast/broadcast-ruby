@@ -7,3 +7,16 @@
 /spec/reports/
 /tmp/
 *.gem
+
+# Credentials
+.env
+.env.*
+credentials.yml
+*.pem
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
