@@ -9,8 +9,10 @@ Works with [sendbroadcast.com](https://sendbroadcast.com) or any self-hosted Bro
 Add to your Gemfile:
 
 ```ruby
-gem 'broadcast-ruby'
+gem 'broadcast-ruby', '~> 0.1', require: 'broadcast'
 ```
+
+The `require: 'broadcast'` is needed because the gem name differs from the require path.
 
 For plain Ruby scripts (non-Rails):
 
