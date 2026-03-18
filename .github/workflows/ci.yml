@@ -10,9 +10,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         ruby: ['3.2', '3.3', '3.4', '4.0']
-    name: Ruby ${{ matrix.ruby }}
+        rails: ['7.1', '7.2', '8.0', '8.1']
+        exclude:
+          - ruby: '4.0'
+            rails: '7.1'
+          - ruby: '4.0'
+            rails: '7.2'
+    name: Ruby ${{ matrix.ruby }} / Rails ${{ matrix.rails }}
+    env:
+      RAILS_VERSION: ${{ matrix.rails }}
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
