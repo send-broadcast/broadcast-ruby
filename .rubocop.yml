@@ -34,6 +34,10 @@ Metrics/PerceivedComplexity:
 Layout/LineLength:
   Max: 120
 
+Naming/FileName:
+  Exclude:
+    - lib/broadcast-ruby.rb
+
 Naming/MethodParameterName:
   AllowedNames:
     - a
