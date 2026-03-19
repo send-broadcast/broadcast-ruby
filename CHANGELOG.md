@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-03-18
+
+### Fixed
+- Register delivery method at class load time instead of in an initializer. ActionMailer's railtie applies config settings (including `broadcast_settings`) inside `on_load(:action_mailer)`, which ran before our initializer-based registration. This caused `undefined method broadcast_settings=` on boot in Rails 8.1.
+
+## [0.1.3] - 2026-03-18
+
+### Fixed
+- Attempted fix for Railtie timing: use `before: :load_config_initializers`. Did not fully resolve the issue — superseded by 0.1.4.
+
 ## [0.1.2] - 2026-03-18
 
 ### Added
