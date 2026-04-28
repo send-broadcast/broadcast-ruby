@@ -59,6 +59,7 @@ client.send_email(
 | `retry_delay` | `1` | Base delay between retries in seconds (multiplied by attempt number) |
 | `debug` | `false` | Log request/response details |
 | `logger` | `nil` | Logger instance for debug output (e.g. `Rails.logger`) |
+| `broadcast_channel_id` | `nil` | Auto-included on every request when set. Required when using an admin/system token (regular tokens are channel-scoped already). Can be overridden per-call or via `client.with_channel(id) { ... }` |
 
 All methods return parsed JSON as Ruby Hashes with string keys.
 
@@ -182,6 +183,75 @@ email['queue_at']   # => '2026-03-17T07:59:58Z'
 | `body` | yes | Email content (HTML or plain text) |
 | `reply_to` | no | Reply-to address |
 
+`send_email` is a thin convenience wrapper. For template-based sends, double opt-in, preheaders, and other advanced options, use `client.transactionals.create`:
+
+```ruby
+# Send via a saved Template (resolves subject/body/preheader server-side)
+client.transactionals.create(
+  to: 'user@example.com',
+  template_id: 42,
+  reply_to: 'support@yourapp.com',
+  include_unsubscribe_link: true
+)
+
+# Override individual fields while still using a template
+client.transactionals.create(
+  to: 'user@example.com',
+  template_id: 42,
+  subject: 'Custom subject for this send'
+)
+
+# Set first/last name on a brand-new subscriber created by this send
+client.transactionals.create(
+  to: 'new@example.com',
+  subject: 'Welcome!',
+  body: '<p>Hi {{first_name}}</p>',
+  subscriber: { first_name: 'Jane', last_name: 'Doe' }
+)
+
+# Get delivery status (alias of client.get_email)
+client.transactionals.get_transactional(42)
+```
+
+### Double Opt-In
+
+Pass `double_opt_in: true` to require email confirmation before delivery. The recipient receives a confirmation email; the actual transactional email is held until they confirm. If the recipient is already a confirmed subscriber, `double_opt_in` is ignored and the email sends normally.
+
+```ruby
+# Boolean form: uses the channel's default confirmation template
+result = client.transactionals.create(
+  to: 'new@example.com',
+  subject: 'Welcome!',
+  body: '<p>Confirmation email coming first...</p>',
+  double_opt_in: true
+)
+result['confirmation_status']  # => 'pending'
+result['confirmation_url']     # => 'https://...'
+
+# Hash form: customize the confirmation flow
+client.transactionals.create(
+  to: 'new@example.com',
+  subject: 'Welcome!',
+  body: '<p>...</p>',
+  double_opt_in: {
+    reply_to: 'support@yourapp.com',
+    confirmation_template_id: 7,
+    include_unsubscribe_link: true
+  }
+)
+
+# Equivalent shortcut for confirmation_template_id at the top level
+client.transactionals.create(
+  to: 'new@example.com',
+  subject: 'Welcome!',
+  body: '<p>...</p>',
+  double_opt_in: true,
+  confirmation_template_id: 7
+)
+```
+
+A transactional email server must be configured for the channel and a confirmation template (or default) must exist, otherwise the request returns 422.
+
 ---
 
 ## Subscribers
@@ -262,6 +332,42 @@ client.subscribers.resubscribe('jane@example.com')
 # Removes PII but preserves aggregate campaign statistics
 client.subscribers.redact('jane@example.com')
 ```
+
+### Double Opt-In
+
+Pass `double_opt_in: true` (or a hash) to create the subscriber in unconfirmed state and queue a confirmation email. If the subscriber already exists and is confirmed, `double_opt_in` is ignored and the existing record is returned.
+
+```ruby
+# Boolean form (uses the channel's default confirmation template)
+result = client.subscribers.create(
+  email: 'new@example.com',
+  first_name: 'Jane',
+  double_opt_in: true
+)
+result['confirmation_status']  # => 'pending'
+result['confirmation_url']     # => '...'
+
+# Hash form -- customize reply-to, template, and unsubscribe link
+client.subscribers.create(
+  email: 'new@example.com',
+  double_opt_in: {
+    reply_to: 'support@yourapp.com',
+    confirmation_template_id: 7,
+    include_unsubscribe_link: true
+  }
+)
+
+# `confirmation_template_id` is also accepted at the top level
+client.subscribers.create(
+  email: 'new@example.com',
+  double_opt_in: true,
+  confirmation_template_id: 7
+)
+```
+
+`double_opt_in` and `confirmation_template_id` are top-level options -- they do **not** go inside the `subscriber:` envelope on the wire (the gem extracts them automatically).
+
+The channel must have an active transactional email server and a confirmation template (default or `confirmation_template_id`), otherwise the request returns 422.
 
 ---
 
@@ -543,6 +649,201 @@ client.templates.delete(1)
 
 ---
 
+## Opt-In Forms
+
+Embeddable subscription forms with theming, A/B variants, and analytics.
+
+**Required permissions:** `opt_in_forms_read`, `opt_in_forms_write`
+
+```ruby
+# List forms (paginated, up to 250 per page; only main forms -- variants are excluded)
+result = client.opt_in_forms.list
+result['opt_in_forms']            # => [{'id' => 1, 'label' => 'Newsletter', ...}, ...]
+result['pagination']['current']   # => 1
+result['pagination']['total']     # => 12
+
+# Filter
+client.opt_in_forms.list(filter: 'newsletter', widget_type: 'inline', enabled: 'true')
+
+# Get a single form (full payload incl. blocks and settings)
+form = client.opt_in_forms.get_opt_in_form(1)
+
+# Create a form
+result = client.opt_in_forms.create(
+  label: 'Newsletter Signup',
+  form_type: 'inline',
+  widget_type: 'inline',
+  enabled: true,
+  theme_settings: {
+    colors: { primary: '#3b82f6', background: '#ffffff', text: '#111827', border: '#d1d5db' }
+  },
+  automation_settings: {
+    tag_list: 'newsletter',
+    send_welcome_email: true,
+    double_opt_in: true,
+    sequence_ids: [3]
+  }
+)
+
+# Update (deeply nested settings hashes pass through verbatim)
+client.opt_in_forms.update(1, enabled: false)
+
+# Delete
+client.opt_in_forms.delete(1)
+```
+
+### Analytics
+
+```ruby
+# Last 30 days by default
+client.opt_in_forms.analytics(1)
+
+# Custom date range -- accepts Date, Time, or ISO-8601 strings
+client.opt_in_forms.analytics(1,
+  start_date: Date.new(2026, 1, 1),
+  end_date: Date.new(2026, 1, 31)
+)
+# Returns: { totals: { views, unique_views, submissions, conversion_rate },
+#            daily: [...], variants: [...] }
+```
+
+### A/B Variants
+
+```ruby
+# Create a variant of a form (defaults to "Variant N" / weight 50)
+client.opt_in_forms.create_variant(1, name: 'B', weight: 50)
+
+# Duplicate a form into a new top-level form (counts toward your plan limit)
+client.opt_in_forms.duplicate(1, label: 'Newsletter Signup (Copy)')
+```
+
+> **Note:** `index`/`show` and `create`/`update` return slightly different JSON shapes (the index/show responses go through JBuilder views; create/update use a richer inline serializer with analytics counts and embed URL). Don't depend on field-level parity between these paths.
+
+---
+
+## Email Servers
+
+Configure outbound email providers for a channel (SMTP, AWS SES, Postmark, Inboxroad, SMTP.com, etc.).
+
+**Required permissions:** `email_servers_read`, `email_servers_write`
+
+```ruby
+# List email servers
+result = client.email_servers.list
+result['data']   # => [{'id' => 1, 'label' => 'Primary SES', 'vendor' => 'aws_ses', ...}, ...]
+result['total']  # => 3
+
+# Pagination
+client.email_servers.list(limit: 10, offset: 0)
+
+# Get a single email server
+es = client.email_servers.get_email_server(1)
+
+# Create -- example: AWS SES
+client.email_servers.create(
+  label: 'Primary SES',
+  vendor: 'aws_ses',
+  delivery_method: 'aws_ses',
+  active: true,
+  aws_region: 'us-east-1',
+  aws_access_key_id: 'AKIA...',
+  aws_secret_access_key: 'secret...',
+  use_for_broadcasts: true,
+  use_for_sequences: true,
+  use_for_transactionals: true
+)
+
+# Create -- example: SMTP
+client.email_servers.create(
+  label: 'Backup SMTP',
+  vendor: 'smtp',
+  delivery_method: 'smtp',
+  smtp_address: 'smtp.example.com',
+  smtp_port: 587,
+  smtp_username: 'user',
+  smtp_password: 'pass',
+  smtp_authentication: 'plain',
+  smtp_enable_starttls_auto: true,
+  emails_per_hour: 10000
+)
+
+# Update -- pass only the fields you want to change
+client.email_servers.update(1, label: 'Primary SES (updated)', emails_per_hour: 50000)
+
+# Test the connection (toggles `active` based on result)
+result = client.email_servers.test_connection(1)
+result['success']  # => true / false
+result['message']  # => 'Connection successful' / 'Connection failed'
+
+# Delete
+client.email_servers.delete(1)
+```
+
+### Credential Redaction
+
+API responses redact credential fields with bullet characters (e.g. `smtp_password: "abcd••••••wxyz"`). **Never round-trip a fetched response back into `update`** -- the gem detects redacted-shape values on known credential fields (`smtp_password`, `aws_*`, `postmark_api_token`, `inboxroad_api_token`, `smtp_com_api_key`) and silently strips them from the payload (with a warning) so they don't overwrite the real value:
+
+```ruby
+# Safe -- only the fields you actually want to change
+client.email_servers.update(1, label: 'New label', emails_per_hour: 25000)
+
+# This would corrupt credentials WITHOUT the gem's scrubber:
+es = client.email_servers.get_email_server(1)
+client.email_servers.update(1, **es)  # bullets get scrubbed, label still updates
+
+# To rotate a credential, pass the real new value
+client.email_servers.update(1, smtp_password: 'new-real-secret')
+```
+
+### Cross-Channel Copy (admin tokens only)
+
+`copy_to_channel` clones an email server (with all settings and headers) into another channel. **Requires an admin/system token** with `email_servers_write` permission. Regular per-channel tokens get `Broadcast::AuthorizationError`. In SaaS mode, the target channel must be in the admin token creator's account.
+
+```ruby
+admin_client = Broadcast::Client.new(
+  api_token: ENV['BROADCAST_ADMIN_TOKEN'],
+  broadcast_channel_id: 1   # the source server's channel
+)
+
+admin_client.email_servers.copy_to_channel(99, target_channel_id: 7)
+```
+
+---
+
+## Channel Scoping (Admin/System Tokens)
+
+Regular API tokens are scoped to a single broadcast channel automatically. Admin/system tokens are not -- they require `broadcast_channel_id` on every request to indicate which channel they're acting on.
+
+The gem auto-includes `broadcast_channel_id` from your `Configuration` on every request:
+
+```ruby
+# Set globally
+client = Broadcast::Client.new(
+  api_token: ENV['BROADCAST_ADMIN_TOKEN'],
+  broadcast_channel_id: 1
+)
+client.email_servers.list  # broadcast_channel_id=1 is appended automatically
+```
+
+For multi-channel scripts, use `with_channel` to scope a block of calls to a specific channel:
+
+```ruby
+client = Broadcast::Client.new(api_token: ENV['BROADCAST_ADMIN_TOKEN'])
+
+client.with_channel(1) do
+  client.email_servers.list
+  client.opt_in_forms.list
+end
+
+client.with_channel(2) do
+  client.subscribers.list
+end
+```
+
+`with_channel` overrides the config-level value inside the block. Per-call `broadcast_channel_id:` always wins over both. The override is thread-local, so it's safe to share a `Client` instance across threads.
+
+---
+
 ## Webhook Endpoints
 
 Receive real-time notifications when events occur (email delivered, subscriber created, sequence completed, etc.).
@@ -640,6 +941,7 @@ All API errors inherit from `Broadcast::Error`. Put specific errors before gener
 begin
   client.send_email(to: 'user@example.com', subject: 'Hi', body: 'Hello')
 rescue Broadcast::AuthenticationError  # 401 -- invalid or expired API token
+rescue Broadcast::AuthorizationError   # 403 -- token lacks the required permission, or admin-only endpoint
 rescue Broadcast::NotFoundError        # 404 -- resource does not exist
 rescue Broadcast::ValidationError      # 422 -- missing or invalid parameters
 rescue Broadcast::RateLimitError       # 429 -- exceeded 120 requests/minute
@@ -665,6 +967,8 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Broadcasts | `broadcasts_read` -- list, get, statistics | `broadcasts_write` -- create, update, delete, send, schedule |
 | Segments | `segments_read` -- list, get | `segments_write` -- create, update, delete |
 | Templates | `templates_read` -- list, get | `templates_write` -- create, update, delete |
+| Opt-In Forms | `opt_in_forms_read` -- list, get, analytics | `opt_in_forms_write` -- create, update, delete, create_variant, duplicate |
+| Email Servers | `email_servers_read` -- list, get | `email_servers_write` -- create, update, delete, test_connection, copy_to_channel (admin) |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
 
 ---
@@ -676,6 +980,12 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 - **Wrong token:** Double-check you copied the full token from your Broadcast dashboard.
 - **Wrong host:** If you're self-hosting, make sure `host` points to your Broadcast instance, not `sendbroadcast.com`.
 - **Missing permissions:** Your token may not have the required permissions for the resource you're accessing. Check the [permissions table](#api-token-permissions).
+
+### `Broadcast::AuthorizationError` (403)
+
+- **Missing permission:** Your token doesn't have the read or write permission for the resource (e.g. calling `client.opt_in_forms.create` with a token that only has `opt_in_forms_read`).
+- **Admin-only endpoint:** `email_servers.copy_to_channel` requires an admin/system token. Regular per-channel tokens cannot perform cross-channel operations.
+- **Missing channel scope on admin token:** Admin tokens require `broadcast_channel_id` on every request. Set it on `Broadcast::Client.new(broadcast_channel_id: …)` or wrap calls with `client.with_channel(id) { … }`.
 
 ### `Broadcast::ValidationError` (422)
 

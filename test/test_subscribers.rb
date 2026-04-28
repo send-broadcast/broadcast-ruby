@@ -111,4 +111,55 @@ class TestSubscribers < Minitest::Test
     result = @subs.redact('jane@example.com')
     assert_includes result['message'], 'redacted'
   end
+
+  # --- Double opt-in ---
+
+  def test_create_with_double_opt_in_boolean_at_top_level
+    stub_request(:post, "#{HOST}/api/v1/subscribers.json")
+      .with(body: hash_including(
+        'subscriber' => hash_including('email' => 'a@b.com'),
+        'double_opt_in' => true
+      ))
+      .to_return(status: 201, body: { id: 1, confirmation_status: 'pending' }.to_json)
+
+    @subs.create(email: 'a@b.com', double_opt_in: true)
+  end
+
+  def test_create_with_double_opt_in_hash_at_top_level
+    stub_request(:post, "#{HOST}/api/v1/subscribers.json")
+      .with(body: hash_including(
+        'subscriber' => hash_including('email' => 'a@b.com'),
+        'double_opt_in' => hash_including('reply_to' => 'r@b.com')
+      ))
+      .to_return(status: 201, body: { id: 1 }.to_json)
+
+    @subs.create(email: 'a@b.com', double_opt_in: { reply_to: 'r@b.com' })
+  end
+
+  def test_create_double_opt_in_not_nested_under_subscriber
+    stub_request(:post, "#{HOST}/api/v1/subscribers.json")
+      .to_return(status: 201, body: { id: 1 }.to_json)
+
+    @subs.create(email: 'a@b.com', double_opt_in: true, confirmation_template_id: 9)
+
+    assert_requested(:post, "#{HOST}/api/v1/subscribers.json") do |req|
+      payload = JSON.parse(req.body)
+      payload['double_opt_in'] == true &&
+        payload['confirmation_template_id'] == 9 &&
+        !payload['subscriber'].key?('double_opt_in') &&
+        !payload['subscriber'].key?('confirmation_template_id')
+    end
+  end
+
+  def test_create_without_double_opt_in_omits_keys
+    stub_request(:post, "#{HOST}/api/v1/subscribers.json")
+      .to_return(status: 201, body: { id: 1 }.to_json)
+
+    @subs.create(email: 'a@b.com')
+
+    assert_requested(:post, "#{HOST}/api/v1/subscribers.json") do |req|
+      payload = JSON.parse(req.body)
+      !payload.key?('double_opt_in') && !payload.key?('confirmation_template_id')
+    end
+  end
 end

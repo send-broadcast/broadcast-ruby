@@ -24,6 +24,8 @@ Metrics/AbcSize:
 
 Metrics/ClassLength:
   Max: 200
+  Exclude:
+    - test/**/*
 
 Metrics/CyclomaticComplexity:
   Max: 15

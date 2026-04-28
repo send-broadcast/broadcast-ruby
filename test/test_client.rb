@@ -174,6 +174,9 @@ class TestClient < Minitest::Test
     assert_instance_of Broadcast::Resources::Segments, client.segments
     assert_instance_of Broadcast::Resources::Templates, client.templates
     assert_instance_of Broadcast::Resources::WebhookEndpoints, client.webhook_endpoints
+    assert_instance_of Broadcast::Resources::Transactionals, client.transactionals
+    assert_instance_of Broadcast::Resources::OptInForms, client.opt_in_forms
+    assert_instance_of Broadcast::Resources::EmailServers, client.email_servers
   end
 
   def test_sub_clients_memoized
@@ -240,6 +243,110 @@ class TestClient < Minitest::Test
   end
 
   # --- Debug logging ---
+
+  # --- Authorization (403) ---
+
+  def test_authorization_error_when_forbidden
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .to_return(status: 403, body: { error: 'Forbidden' }.to_json)
+
+    error = assert_raises(Broadcast::AuthorizationError) do
+      new_client.send_email(to: 'a@b.com', subject: 'Hi', body: 'x')
+    end
+    assert_match(/Forbidden/, error.message)
+  end
+
+  def test_authorization_error_inherits_api_error
+    assert_operator Broadcast::AuthorizationError, :<, Broadcast::APIError
+  end
+
+  # --- Channel scoping ---
+
+  def test_with_channel_block_appends_to_get_query
+    stub_request(:get, %r{#{HOST}/api/v1/email_servers.*broadcast_channel_id=42})
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client = new_client
+    client.with_channel(42) do
+      client.email_servers.list
+    end
+
+    assert_requested(:get, /broadcast_channel_id=42/)
+  end
+
+  def test_with_channel_block_appends_to_post_body
+    stub_request(:post, "#{HOST}/api/v1/email_servers")
+      .with(body: hash_including('broadcast_channel_id' => 42))
+      .to_return(status: 201, body: { id: 1 }.to_json)
+
+    client = new_client
+    client.with_channel(42) do
+      client.email_servers.create(label: 'X', vendor: 'smtp')
+    end
+  end
+
+  def test_with_channel_block_restores_previous_value
+    client = new_client
+    client.with_channel(42) do
+      # do nothing
+    end
+
+    stub_request(:get, "#{HOST}/api/v1/email_servers")
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client.email_servers.list
+
+    assert_requested(:get, "#{HOST}/api/v1/email_servers") do |req|
+      !req.uri.to_s.include?('broadcast_channel_id')
+    end
+  end
+
+  def test_config_broadcast_channel_id_auto_appended
+    stub_request(:get, %r{#{HOST}/api/v1/email_servers.*broadcast_channel_id=99})
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client = new_client(broadcast_channel_id: 99)
+    client.email_servers.list
+
+    assert_requested(:get, /broadcast_channel_id=99/)
+  end
+
+  def test_with_channel_overrides_config_value
+    stub_request(:get, %r{#{HOST}/api/v1/email_servers.*broadcast_channel_id=42})
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client = new_client(broadcast_channel_id: 99)
+    client.with_channel(42) do
+      client.email_servers.list
+    end
+
+    assert_requested(:get, /broadcast_channel_id=42/)
+    refute_requested(:get, /broadcast_channel_id=99/)
+  end
+
+  def test_caller_supplied_channel_id_wins_over_auto_inject
+    stub_request(:get, %r{#{HOST}/api/v1/email_servers})
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client = new_client(broadcast_channel_id: 99)
+    # Caller passes broadcast_channel_id explicitly via raw request
+    client.request(:get, '/api/v1/email_servers', { broadcast_channel_id: 7 })
+
+    assert_requested(:get, /broadcast_channel_id=7/)
+    refute_requested(:get, /broadcast_channel_id=99/)
+  end
+
+  def test_no_channel_id_when_unset
+    stub_request(:get, "#{HOST}/api/v1/email_servers")
+      .to_return(status: 200, body: { data: [], total: 0 }.to_json)
+
+    client = new_client
+    client.email_servers.list
+
+    assert_requested(:get, "#{HOST}/api/v1/email_servers") do |req|
+      !req.uri.to_s.include?('broadcast_channel_id')
+    end
+  end
 
   def test_debug_logging
     log_output = StringIO.new

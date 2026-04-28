@@ -13,6 +13,7 @@ class TestConfiguration < Minitest::Test
     assert_equal false, config.debug
     assert_nil config.api_token
     assert_nil config.logger
+    assert_nil config.broadcast_channel_id
   end
 
   def test_custom_host

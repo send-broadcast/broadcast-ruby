@@ -12,6 +12,9 @@ require_relative 'broadcast/resources/broadcasts'
 require_relative 'broadcast/resources/segments'
 require_relative 'broadcast/resources/templates'
 require_relative 'broadcast/resources/webhook_endpoints'
+require_relative 'broadcast/resources/transactionals'
+require_relative 'broadcast/resources/opt_in_forms'
+require_relative 'broadcast/resources/email_servers'
 
 # ActionMailer integration — only loaded when Rails is present
 if defined?(Rails::Railtie)

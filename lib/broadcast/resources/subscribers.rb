@@ -11,8 +11,26 @@ module Broadcast
         get('/api/v1/subscribers/find.json', { email: email })
       end
 
+      # Create or upsert a subscriber.
+      #
+      # Subscriber attributes (wrapped under `subscriber:` on the wire):
+      #   email:, first_name:, last_name:, is_active:, source:,
+      #   subscribed_at:, ip_address:, tags: [...], custom_data: {...}
+      #
+      # Top-level options (NOT wrapped under `subscriber:`):
+      #   double_opt_in:               true | { reply_to:, confirmation_template_id:, include_unsubscribe_link: }
+      #                                When set, the subscriber is created in unconfirmed state
+      #                                and a confirmation email is queued.
+      #   confirmation_template_id:    custom confirmation template (used with double_opt_in: true)
       def create(**attrs)
-        post('/api/v1/subscribers.json', { subscriber: attrs })
+        double_opt_in = attrs.delete(:double_opt_in)
+        confirmation_template_id = attrs.delete(:confirmation_template_id)
+
+        payload = { subscriber: attrs }
+        payload[:double_opt_in] = double_opt_in unless double_opt_in.nil?
+        payload[:confirmation_template_id] = confirmation_template_id unless confirmation_template_id.nil?
+
+        post('/api/v1/subscribers.json', payload)
       end
 
       def update(email, **attrs)

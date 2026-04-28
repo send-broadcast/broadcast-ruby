@@ -9,7 +9,8 @@ module Broadcast
                   :retry_attempts,
                   :retry_delay,
                   :logger,
-                  :debug
+                  :debug,
+                  :broadcast_channel_id
 
     def initialize
       @api_token = nil
@@ -20,6 +21,7 @@ module Broadcast
       @retry_delay = 1
       @logger = nil
       @debug = false
+      @broadcast_channel_id = nil
     end
 
     def validate!

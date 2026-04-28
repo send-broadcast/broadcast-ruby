@@ -9,6 +9,8 @@ module Broadcast
 
   class AuthenticationError < APIError; end
 
+  class AuthorizationError < APIError; end
+
   class NotFoundError < APIError; end
 
   class RateLimitError < APIError; end
