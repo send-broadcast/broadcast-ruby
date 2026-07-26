@@ -3,6 +3,22 @@
 module Broadcast
   module Resources
     class Subscribers < Base
+      # List subscribers (250 per page, with `pagination` metadata; pass `page:`).
+      #
+      # Filters, all optional and combinable:
+      #   is_active:            true | false
+      #   source:               exact match on the source string
+      #   created_after:        ISO-8601 timestamp
+      #   created_before:       ISO-8601 timestamp
+      #   tags:                 array — AND logic, subscriber must have all of them
+      #   email:                partial (case-insensitive) match, not exact
+      #   confirmation_status:  'confirmed' | 'unconfirmed'
+      #   custom_data:          hash — JSONB containment, e.g. { plan: 'pro' }
+      #
+      # An unparseable created_after/created_before is *ignored* by the server
+      # rather than rejected; it comes back as a `parameter_ignored` warning on
+      # the response, so a bad timestamp silently widens the result set unless
+      # you check `result.warnings`.
       def list(**params)
         get('/api/v1/subscribers.json', params)
       end
@@ -22,6 +38,14 @@ module Broadcast
       #                                When set, the subscriber is created in unconfirmed state
       #                                and a confirmation email is queued.
       #   confirmation_template_id:    custom confirmation template (used with double_opt_in: true)
+      #
+      # Admin tokens only:
+      #   confirmed_at:                backdate the confirmation timestamp on create.
+      #                                Intended for migrating an already-confirmed list off
+      #                                another provider. Ignored (with a warning) on update,
+      #                                and ignored entirely for channel-scoped tokens.
+      #
+      # Note `unsubscribed_at` is never settable here — use `unsubscribe(email)`.
       def create(**attrs)
         double_opt_in = attrs.delete(:double_opt_in)
         confirmation_template_id = attrs.delete(:confirmation_template_id)

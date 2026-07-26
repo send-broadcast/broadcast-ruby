@@ -3,7 +3,7 @@
 # Live integration tests against a real Broadcast instance.
 #
 # Usage:
-#   BROADCAST_API_TOKEN=your-token BROADCAST_HOST=https://sendbroadcast.com bundle exec rake test_live
+#   BROADCAST_API_TOKEN=your-token BROADCAST_HOST=https://mail.example.com bundle exec rake test_live
 #
 # Optional:
 #   BROADCAST_TEST_EMAIL=you@example.com  — recipient for transactional email test (default: skips send)
@@ -39,6 +39,44 @@ class TestLive < Minitest::Test
     result = @client.subscribers.list(page: 1)
     assert result.key?('subscribers'), 'Expected subscribers key in response'
     assert result.key?('pagination'), 'Expected pagination key in response'
+  end
+
+  # --- Discovery ---
+
+  def test_whoami
+    result = @client.whoami
+    assert result.key?('token'), 'Expected token key in whoami response'
+    assert result.key?('channel'), 'Expected channel key in whoami response'
+    assert_includes %w[channel_scoped admin_cross_channel], result.dig('token', 'type')
+  end
+
+  def test_status
+    result = @client.status
+    assert result.dig('subscribers', 'total').is_a?(Integer)
+    assert result.key?('readiness'), 'Expected readiness key in status response'
+  end
+
+  def test_prime
+    result = @client.prime
+    assert_equal 'Broadcast', result.dig('platform', 'name')
+    assert result['capabilities'].is_a?(Array)
+  end
+
+  def test_skill_is_plain_text
+    result = @client.skill
+    assert_kind_of String, result
+    assert_includes result, 'name: broadcast'
+  end
+
+  # --- Response metadata ---
+
+  # Confirms the live API still sends the headers the gem parses. If the server
+  # ever stops emitting X-RateLimit-*, this is where we find out.
+  def test_rate_limit_headers_are_present
+    result = @client.subscribers.list(page: 1)
+    refute_nil result.rate_limit, 'Expected X-RateLimit-* headers on the response'
+    assert result.rate_limit.limit.positive?
+    refute_nil result.rate_limit.reset
   end
 
   # --- Subscribers ---

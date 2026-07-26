@@ -1,8 +1,8 @@
 # broadcast-ruby
 
-Ruby client for the [Broadcast](https://sendbroadcast.com) email platform.
+Ruby client for the [Broadcast](https://sendbroadcast.net) email platform.
 
-Works with [sendbroadcast.com](https://sendbroadcast.com) or any self-hosted Broadcast instance.
+Works with any Broadcast instance — self-hosted or SaaS.
 
 ## Installation
 
@@ -37,7 +37,7 @@ require 'broadcast'
 
 client = Broadcast::Client.new(
   api_token: 'your-token',
-  host: 'https://sendbroadcast.com'  # or your self-hosted URL
+  host: 'https://mail.example.com'  # your Broadcast instance
 )
 
 client.send_email(
@@ -47,23 +47,105 @@ client.send_email(
 )
 ```
 
+`host` has no default — every Broadcast instance lives at its own domain, so
+there is no URL the gem could guess correctly. You can supply it through the
+environment instead, using the same variable names as the Broadcast CLI:
+
+```bash
+export BROADCAST_HOST=https://mail.example.com
+export BROADCAST_API_TOKEN=your-token
+```
+
+```ruby
+client = Broadcast::Client.new  # picks both up from ENV
+```
+
 ### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `api_token` | *required* | Your Broadcast API token |
-| `host` | `https://sendbroadcast.com` | Broadcast instance URL |
+| `api_token` | *required* | Your Broadcast API token. Falls back to `BROADCAST_API_TOKEN` |
+| `host` | *required* | Broadcast instance URL, scheme included. Falls back to `BROADCAST_HOST` |
 | `timeout` | `30` | Read timeout (seconds) |
 | `open_timeout` | `10` | Connection timeout (seconds) |
-| `retry_attempts` | `3` | Max total attempts (1 initial + 2 retries). Server errors (5xx) and timeouts are retried; client errors (4xx) are not |
+| `retry_attempts` | `3` | Max total attempts (1 initial + 2 retries). Server errors (5xx), timeouts, and rate limits (429) are retried; other client errors (4xx) are not |
 | `retry_delay` | `1` | Base delay between retries in seconds (multiplied by attempt number) |
-| `debug` | `false` | Log request/response details |
+| `max_retry_delay` | `30` | Ceiling for a server-supplied `Retry-After`, so a long rate-limit window can't stall the caller |
+| `warnings_mode` | `:log` | How to handle API warnings — `:log`, `:raise`, or `:ignore`. See [API Warnings](#api-warnings) |
+| `debug` | `false` | Log request/response details (credentials are redacted) |
 | `logger` | `nil` | Logger instance for debug output (e.g. `Rails.logger`) |
 | `broadcast_channel_id` | `nil` | Auto-included on every request when set. Required when using an admin/system token (regular tokens are channel-scoped already). Can be overridden per-call or via `client.with_channel(id) { ... }` |
 
-All methods return parsed JSON as Ruby Hashes with string keys.
+All methods return parsed JSON as Ruby Hashes with string keys. The returned
+object is a `Broadcast::Response` — a Hash subclass that also carries response
+metadata (`#warnings`, `#rate_limit`, `#status`, `#idempotent_replay?`).
+Anything that worked against a plain Hash still works.
 
 > **Note on module naming:** This gem defines a top-level `Broadcast` module. If your application already has a `Broadcast` class or module (e.g. an ActiveRecord model), you may encounter a namespace collision.
+
+---
+
+## API Warnings
+
+Broadcast accepts a write and then tells you what it ignored. A misspelled
+attribute, a parameter that only applies in another mode, a value the server
+overrode — none of these fail the request, they come back as a `warnings` array
+on the successful response.
+
+This is the difference between "my custom field isn't saving and I can't work
+out why" and a one-line answer:
+
+```ruby
+result = client.subscribers.create(email: 'jane@example.com', frist_name: 'Jane')
+
+result['id']       # => 42 — the subscriber WAS created
+result.warnings?   # => true
+result.warnings.each { |w| puts w }
+# [unrecognized_parameter] subscriber.frist_name: frist_name is not a recognized
+#   subscriber attribute and was ignored.
+```
+
+Each warning has `#code`, `#param` (a dot-path, may be nil), and `#message`.
+Values you submitted are never echoed back, so warnings are safe to log.
+
+Control what happens via `warnings_mode`:
+
+| Mode | Behaviour |
+|------|-----------|
+| `:log` (default) | Written to `logger` at WARN level, if a logger is configured |
+| `:raise` | Raises `Broadcast::WarningError` |
+| `:ignore` | Left on the response for you to inspect |
+
+```ruby
+# Recommended in CI or a test suite: turn silent parameter drops into failures
+client = Broadcast::Client.new(api_token: '...', host: '...', warnings_mode: :raise)
+```
+
+> `:raise` fires **after** the request succeeded. Rescuing `WarningError` does
+> not mean the write was rolled back — the subscriber was still created, the
+> email was still sent.
+
+Common codes: `unrecognized_parameter`, `parameter_ignored`,
+`parameter_overridden`, `double_opt_in_skipped`.
+
+## Rate Limits
+
+Every response carries the current limit state, and 429s are retried
+automatically honouring the server's `Retry-After` (capped at `max_retry_delay`).
+
+```ruby
+result = client.subscribers.list
+
+result.rate_limit.limit      # => 120
+result.rate_limit.remaining  # => 118
+result.rate_limit.reset      # => 2026-07-26 12:00:00 UTC
+
+# Back off before you get throttled
+sleep 1 if result.rate_limit.remaining < 10
+```
+
+If the retries are exhausted you get a `Broadcast::RateLimitError`, which
+carries `#retry_after` so you can requeue the job sensibly.
 
 ---
 
@@ -91,7 +173,7 @@ Then configure production to use Broadcast:
 config.action_mailer.delivery_method = :broadcast
 config.action_mailer.broadcast_settings = {
   api_token: Rails.application.credentials.dig(:broadcast, :api_token),
-  host: 'https://sendbroadcast.com'
+  host: 'https://mail.example.com'
 }
 ```
 
@@ -133,7 +215,7 @@ Replace in `config/environments/production.rb`:
 + config.action_mailer.delivery_method = :broadcast
 + config.action_mailer.broadcast_settings = {
 +   api_token: Rails.application.credentials.dig(:broadcast, :api_token),
-+   host: 'https://sendbroadcast.com'
++   host: 'https://mail.example.com'
 + }
 ```
 
@@ -213,6 +295,47 @@ client.transactionals.create(
 client.transactionals.get_transactional(42)
 ```
 
+### Idempotent Sends
+
+Pass `idempotency_key:` to make a retry safe. The server stores the response for
+24 hours keyed on (token, key) and replays it instead of sending a second email
+— so a job that times out after the send but before the ack won't double-mail
+your customer.
+
+```ruby
+result = client.transactionals.create(
+  to: 'user@example.com',
+  subject: "Receipt for order ##{order.id}",
+  body: receipt_html,
+  idempotency_key: "receipt-#{order.id}"
+)
+
+result.idempotent_replay?  # => true if this replayed a stored response
+```
+
+Use a key derived from the thing you're emailing about (`"receipt-#{order.id}"`),
+not a random UUID generated per attempt — a fresh UUID on each retry defeats the
+whole mechanism.
+
+Two failure modes worth handling separately:
+
+```ruby
+begin
+  client.transactionals.create(to: ..., idempotency_key: key)
+rescue Broadcast::ConflictError
+  # 409 — the original request is still in flight. Retry shortly; do not
+  # change the key, or you'll send twice.
+  retry_job(wait: 5.seconds)
+rescue Broadcast::ValidationError => e
+  # 422 with an idempotency key can mean the key was already used with a
+  # DIFFERENT payload. Retrying with the same key will never succeed.
+  raise
+end
+```
+
+The fingerprint covers method, full path (including query string), and body.
+Changing any of them while reusing a key is what triggers that 422.
+
 ### Double Opt-In
 
 Pass `double_opt_in: true` to require email confirmation before delivery. The recipient receives a confirmation email; the actual transactional email is held until they confirm. If the recipient is already a confirmed subscriber, `double_opt_in` is ignored and the email sends normally.
@@ -267,12 +390,21 @@ result['subscribers']            # => [{'email' => '...', 'tags' => [...], ...},
 result['pagination']['total']    # => 1500
 result['pagination']['current']  # => 1
 
-# Filter by status, tags, dates, or custom data
+# Filter by status, tags, dates, or custom data -- all combinable
 client.subscribers.list(is_active: true)
-client.subscribers.list(tags: ['newsletter', 'premium'])
-client.subscribers.list(created_after: '2026-01-01T00:00:00Z')
-client.subscribers.list(custom_data: { plan: 'pro' })
+client.subscribers.list(source: 'opt_in_form')
+client.subscribers.list(tags: ['newsletter', 'premium'])   # AND -- must have all
+client.subscribers.list(email: 'example.com')              # partial match, not exact
+client.subscribers.list(confirmation_status: 'unconfirmed')
+client.subscribers.list(created_after: '2026-01-01T00:00:00Z',
+                        created_before: '2026-02-01T00:00:00Z')
+client.subscribers.list(custom_data: { plan: 'pro' })       # JSONB containment
 ```
+
+> An unparseable `created_after` / `created_before` is **ignored** by the server
+> rather than rejected — you get every subscriber back, plus a
+> `parameter_ignored` warning. Check `result.warnings` (or run with
+> `warnings_mode: :raise`) if a filtered count looks too high.
 
 ```ruby
 # Find by email
@@ -871,6 +1003,20 @@ result = client.webhook_endpoints.create(
 # IMPORTANT: Save the secret from the response -- it is only shown once
 secret = result['secret']
 
+# Every valid event type is available as a constant. An unknown event type is
+# dropped server-side rather than rejected, so subscribe from these.
+Broadcast::Webhook::EVENT_TYPES        # all 32
+Broadcast::Webhook::EMAIL_EVENTS       # email.sent, email.delivered, ...
+Broadcast::Webhook::SUBSCRIBER_EVENTS  # subscriber.created, ...
+Broadcast::Webhook::BROADCAST_EVENTS   # broadcast.sending, broadcast.sent, ...
+Broadcast::Webhook::SEQUENCE_EVENTS    # sequence.subscriber_added, ...
+Broadcast::Webhook::SYSTEM_EVENTS      # message.attempt.exhausted, test.webhook
+
+client.webhook_endpoints.create(
+  url: 'https://yourapp.com/webhooks/broadcast',
+  event_types: Broadcast::Webhook::EMAIL_EVENTS
+)
+
 # Update (url and secret cannot be changed -- create a new endpoint instead)
 client.webhook_endpoints.update(1, active: false)
 client.webhook_endpoints.update(1, event_types: ['email.delivered', 'email.opened'])
@@ -933,6 +1079,106 @@ The signature is computed as `HMAC-SHA256(timestamp + "." + payload, secret)`. T
 
 ---
 
+## Discovery
+
+Ask the instance what this token can do and whether the channel is ready to
+send. Useful as a deploy-time smoke check, and as the entry point for agents
+and CLIs.
+
+```ruby
+# Who am I? Token type, permissions, resolved channel.
+me = client.whoami
+me['token']['type']          # => 'channel_scoped' or 'admin_cross_channel'
+me['token']['permissions']   # => { 'subscribers' => ['read', 'write'], ... }
+me['channel']['name']        # => 'Main'
+
+# Is this channel actually able to send?
+status = client.status
+status['subscribers']['active']     # => 1042
+status['readiness']['broadcasts']   # => true
+status['readiness']['sequences']    # => false — no email server configured
+
+# Full capability manifest: platform version, endpoint list, rate limit, tips.
+client.prime
+
+# Plain-text agent skill manifest (Markdown + YAML front matter).
+# Returns a String, not a Hash.
+puts client.skill
+```
+
+A useful preflight before a send job:
+
+```ruby
+raise 'channel not ready to send' unless client.status.dig('readiness', 'broadcasts')
+```
+
+---
+
+## Export & Migration (admin tokens only)
+
+Read-only endpoints under `/api/migration/v1` for backups and moving a channel
+between instances. Two constraints differ from the rest of the API:
+
+- **Admin tokens only.** Channel-scoped tokens are rejected.
+- **`broadcast_channel_id` is required on every call.** Set it once on the
+  client and the gem attaches it for you.
+
+```ruby
+client = Broadcast::Client.new(
+  api_token: ENV['BROADCAST_ADMIN_TOKEN'],
+  host: 'https://mail.example.com',
+  broadcast_channel_id: 1
+)
+
+# Size the export first
+manifest = client.migration.manifest
+manifest['counts']            # => { 'subscribers' => 5000, 'templates' => 12, ... }
+manifest['export_format_version']
+
+# Time-bounded counts (broadcasts, receipts, histories) default to 90 days
+client.migration.manifest(days_history: 365)
+```
+
+Each collection is a paginated list returning `data` and `pagination`:
+
+```ruby
+page = client.migration.subscribers(limit: 250, offset: 0)
+page['data']
+page['pagination']  # => { 'total' => 5000, 'limit' => 250, 'offset' => 0, 'has_more' => true }
+```
+
+`each_record` handles the paging for you, advancing by the page size the server
+actually granted rather than the one you asked for:
+
+```ruby
+CSV.open('subscribers.csv', 'w') do |csv|
+  client.migration.each_record(:subscribers) do |subscriber|
+    csv << [subscriber['email'], subscriber['first_name'], subscriber['created_at']]
+  end
+end
+
+# Without a block you get an Enumerator
+client.migration.each_record(:tags).map { |tag| tag['name'] }
+```
+
+Available collections:
+
+```
+channels  subscribers  templates  segments  sequences  email_servers
+opt_in_forms  broadcasts  outbound_receipts  webhook_endpoints  tokens
+suppressions  tags  users  link_redirects  link_clicks
+subscriber_histories  file_assets
+```
+
+File assets are downloaded separately and return raw bytes:
+
+```ruby
+bytes = client.migration.download_file_asset(7)
+File.binwrite('logo.png', bytes)
+```
+
+---
+
 ## Error Handling
 
 All API errors inherit from `Broadcast::Error`. Put specific errors before general ones:
@@ -943,15 +1189,24 @@ begin
 rescue Broadcast::AuthenticationError  # 401 -- invalid or expired API token
 rescue Broadcast::AuthorizationError   # 403 -- token lacks the required permission, or admin-only endpoint
 rescue Broadcast::NotFoundError        # 404 -- resource does not exist
+rescue Broadcast::ConflictError        # 409 -- Idempotency-Key request still in flight
 rescue Broadcast::ValidationError      # 422 -- missing or invalid parameters
-rescue Broadcast::RateLimitError       # 429 -- exceeded 120 requests/minute
+rescue Broadcast::RateLimitError       # 429 -- rate limited; carries #retry_after
 rescue Broadcast::TimeoutError         # connection or read timeout
 rescue Broadcast::APIError             # 5xx or unexpected status codes
+rescue Broadcast::WarningError         # warnings_mode: :raise -- request SUCCEEDED
+rescue Broadcast::ConfigurationError   # missing api_token or host
 rescue Broadcast::DeliveryError        # ActionMailer wrapper (wraps any of the above)
 end
 ```
 
-Server errors (5xx) and timeouts are automatically retried with linear backoff. Client errors (401, 404, 422, 429) are raised immediately. `DeliveryError` is only raised from the ActionMailer delivery method -- it wraps the underlying API error.
+Server errors (5xx), timeouts, and rate limits (429) are retried automatically —
+429s honour the server's `Retry-After`, bounded by `max_retry_delay`. Other
+client errors (401, 403, 404, 409, 422) are raised immediately.
+
+`DeliveryError` is only raised from the ActionMailer delivery method and wraps
+the underlying API error. `WarningError` is deliberately not wrapped: the email
+was sent, so reporting it as a delivery failure would be wrong.
 
 ---
 
@@ -978,7 +1233,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 ### `Broadcast::AuthenticationError` (401)
 
 - **Wrong token:** Double-check you copied the full token from your Broadcast dashboard.
-- **Wrong host:** If you're self-hosting, make sure `host` points to your Broadcast instance, not `sendbroadcast.com`.
+- **Wrong host:** Make sure `host` points at your own Broadcast instance. There is no default.
 - **Missing permissions:** Your token may not have the required permissions for the resource you're accessing. Check the [permissions table](#api-token-permissions).
 
 ### `Broadcast::AuthorizationError` (403)

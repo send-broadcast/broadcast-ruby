@@ -13,6 +13,11 @@ module Broadcast
         body: extract_body(mail),
         reply_to: mail.reply_to&.first
       )
+    rescue Broadcast::WarningError
+      # The send succeeded — warnings_mode: :raise is about surfacing ignored
+      # parameters, not reporting a delivery failure. Wrapping it in
+      # DeliveryError would tell ActionMailer the mail didn't go out.
+      raise
     rescue Broadcast::Error => e
       raise DeliveryError, "Failed to deliver email: #{e.message}"
     end

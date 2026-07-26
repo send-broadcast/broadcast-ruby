@@ -2,6 +2,87 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-07-26
+
+Catches the gem up to the Broadcast v2.19 API. The API gained a response-warnings
+contract, idempotency keys, and several discovery endpoints since 0.2.0; none of
+them were represented here.
+
+### Breaking
+- **`host` is now required.** It previously defaulted to `https://sendbroadcast.com`,
+  which 301-redirects to `sendbroadcast.net` — and since the client did not follow
+  redirects, the default failed every request with
+  `APIError: Unexpected response: 301`. Broadcast is self-hosted-first, so there is
+  no URL the gem can guess. Pass `host:` explicitly or set `BROADCAST_HOST`.
+  A host without a scheme is now rejected at construction rather than at request time.
+
+### Added
+- **`client.autopilots`** — the Autopilot API (AI-generated newsletters): CRUD,
+  activate / pause / deactivate, trigger_run, and runs. The `autopilot_read` /
+  `autopilot_write` token permissions existed since 2026-01-30 but had no
+  endpoints behind them until Broadcast v2.19.1. `update` strips a bullet-masked
+  `openrouter_api_key` so a fetch-modify-save cannot destroy the stored key.
+- **API warnings.** Successful writes can carry a `warnings` array describing what
+  the server ignored (`unrecognized_parameter`, `parameter_ignored`,
+  `parameter_overridden`, `double_opt_in_skipped`). Exposed as `result.warnings`
+  and controlled by `warnings_mode:` — `:log` (default), `:raise`, or `:ignore`.
+- **`Broadcast::Response`.** All JSON calls now return a Hash subclass carrying
+  `#warnings`, `#rate_limit`, `#status`, `#headers`, and `#idempotent_replay?`.
+  Existing Hash-based code is unaffected.
+- **Idempotent transactional sends.** `transactionals.create(..., idempotency_key:)`
+  sends the `Idempotency-Key` header; `Broadcast::ConflictError` maps 409 (previously
+  a generic `APIError`).
+- **Rate-limit awareness.** `result.rate_limit` exposes the `X-RateLimit-*` headers,
+  `RateLimitError#retry_after` exposes `Retry-After`, and 429s are now retried
+  honouring it, bounded by the new `max_retry_delay` setting (default 30s).
+- **Discovery endpoints:** `client.whoami`, `client.status`, `client.prime`, and
+  `client.skill` (plain text).
+- **Migration/export namespace:** `client.migration.*` covers all 19 read-only
+  endpoints under `/api/migration/v1`, plus `each_record` for automatic paging and
+  `download_file_asset` for binary assets. Requires an admin token.
+- **`Broadcast::Webhook::EVENT_TYPES`** and per-category constants (`EMAIL_EVENTS`,
+  `SUBSCRIBER_EVENTS`, `BROADCAST_EVENTS`, `SEQUENCE_EVENTS`, `SYSTEM_EVENTS`).
+- `BROADCAST_HOST` / `BROADCAST_API_TOKEN` environment fallbacks, matching the
+  Broadcast CLI's config keys.
+- Redirect handling: same-host GETs follow up to 3 hops. Writes, and any redirect
+  that changes host, fail with an error naming the target — every request carries
+  the bearer token, so following a cross-host redirect would leak it.
+- Documented attributes added to the API after 0.2.0 — template
+  `template_purpose` / `confirmation_text` / `default_confirmation` /
+  `confirmation_page_settings`; opt-in form `confirmation_email_template_id` /
+  `welcome_email_template_id` / `confirmation_redirect_url` /
+  `include_unsubscribe_link_in_confirmation`; admin-only `confirmed_at` on
+  subscriber create; and the full subscriber list filter set.
+
+### Fixed
+- Debug logging redacted: SMTP passwords and provider API keys are no longer written
+  to the log when `debug: true`.
+- 2xx responses other than 200/201 (e.g. 204) no longer raise.
+- A 2xx response with a non-JSON body no longer raises `JSON::ParserError`.
+- Error messages now include ActiveModel-style `errors` hashes, not just `error` strings.
+- Binary responses keep binary encoding instead of being tagged UTF-8.
+- The ActionMailer delivery method no longer wraps `WarningError` in `DeliveryError` —
+  the email was sent, so reporting a delivery failure would be wrong.
+- **Packaging:** the gemspec shipped this repo's internal planning documents
+  (`TODO.md`, `SDK-TODO.md`, `.api-coverage.yml`) and the committed `.gem`
+  artifacts at the repo root to every install. The file list now excludes them,
+  along with `.github/` and `pkg/`. `SDK-COVERAGE.md` is kept deliberately —
+  "what does this gem support" is a user's question.
+
+### Internal
+- HTTP transport extracted from `Client` into `Broadcast::Connection`, and debug
+  logging into `Broadcast::DebugLogger`.
+- Test coverage for the gemspec's file list, since a wrong package fails
+  silently: nothing breaks, the download is just wrong.
+
+### Verification
+- 292 tests, rubocop clean.
+- Coverage against the generated OpenAPI document: 104/104 operations
+  (`rake "openapi:coverage[../broadcast-ruby]"` in the `broadcast` repo).
+- The built `.gem` was installed into an isolated `GEM_HOME` and exercised.
+- **Not** verified against a live instance — `rake test_live` needs a real
+  token and host, and has not been run for this release.
+
 ## [0.2.0] - 2026-04-28
 
 ### Added
