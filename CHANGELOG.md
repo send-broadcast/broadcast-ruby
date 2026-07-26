@@ -63,10 +63,25 @@ them were represented here.
 - Binary responses keep binary encoding instead of being tagged UTF-8.
 - The ActionMailer delivery method no longer wraps `WarningError` in `DeliveryError` —
   the email was sent, so reporting a delivery failure would be wrong.
+- **Packaging:** the gemspec shipped this repo's internal planning documents
+  (`TODO.md`, `SDK-TODO.md`, `.api-coverage.yml`) and the committed `.gem`
+  artifacts at the repo root to every install. The file list now excludes them,
+  along with `.github/` and `pkg/`. `SDK-COVERAGE.md` is kept deliberately —
+  "what does this gem support" is a user's question.
 
 ### Internal
 - HTTP transport extracted from `Client` into `Broadcast::Connection`, and debug
   logging into `Broadcast::DebugLogger`.
+- Test coverage for the gemspec's file list, since a wrong package fails
+  silently: nothing breaks, the download is just wrong.
+
+### Verification
+- 292 tests, rubocop clean.
+- Coverage against the generated OpenAPI document: 104/104 operations
+  (`rake "openapi:coverage[../broadcast-ruby]"` in the `broadcast` repo).
+- The built `.gem` was installed into an isolated `GEM_HOME` and exercised.
+- **Not** verified against a live instance — `rake test_live` needs a real
+  token and host, and has not been run for this release.
 
 ## [0.2.0] - 2026-04-28
 
