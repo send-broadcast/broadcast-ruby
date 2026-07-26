@@ -80,8 +80,14 @@ them were represented here.
 - Coverage against the generated OpenAPI document: 104/104 operations
   (`rake "openapi:coverage[../broadcast-ruby]"` in the `broadcast` repo).
 - The built `.gem` was installed into an isolated `GEM_HOME` and exercised.
-- **Not** verified against a live instance — `rake test_live` needs a real
-  token and host, and has not been run for this release.
+- `rake test_live` run against a real self-hosted instance: 14 tests, 52
+  assertions, 0 failures. Covers the discovery endpoints, the `X-RateLimit-*`
+  headers, and full create/read/update/delete round-trips for subscribers,
+  sequences, segments, templates, and webhook endpoints.
+- Two gaps in that run, both deliberate: the transactional **send** test is
+  skipped unless `BROADCAST_TEST_EMAIL` is set, so no mail was delivered; and
+  the target was a local development instance over plain HTTP, so TLS and
+  real-world latency and rate limiting are still unexercised.
 
 ## [0.2.0] - 2026-04-28
 
