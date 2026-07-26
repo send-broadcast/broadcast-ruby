@@ -128,10 +128,18 @@ class TestDeliveryMethod < Minitest::Test
     @dm.deliver!(mail)
   end
 
-  # --- Default host ---
+  # --- Host resolution ---
 
-  def test_default_host
-    dm = Broadcast::DeliveryMethod.new(api_token: 'tok')
+  def test_requires_host
+    with_env(Broadcast::Configuration::ENV_HOST => nil) do
+      assert_raises(Broadcast::ConfigurationError) { Broadcast::DeliveryMethod.new(api_token: 'tok') }
+    end
+  end
+
+  def test_falls_back_to_env_host
+    dm = with_env(Broadcast::Configuration::ENV_HOST => HOST) do
+      Broadcast::DeliveryMethod.new(api_token: 'tok')
+    end
 
     mail = Mail.new do
       to 'user@example.com'
@@ -139,10 +147,29 @@ class TestDeliveryMethod < Minitest::Test
       body 'Hi'
     end
 
-    stub_request(:post, 'https://sendbroadcast.com/api/v1/transactionals.json')
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
       .to_return(status: 200, body: { id: 1 }.to_json)
 
     dm.deliver!(mail)
+    assert_requested(:post, "#{HOST}/api/v1/transactionals.json")
+  end
+
+  # A raised warning means the send happened but a parameter was ignored —
+  # it must not be reported to ActionMailer as a delivery failure.
+  def test_warning_error_is_not_wrapped_as_delivery_error
+    dm = Broadcast::DeliveryMethod.new(api_token: 'tok', host: HOST, warnings_mode: :raise)
+
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Hello'
+      body 'Hi'
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .to_return(status: 201,
+                 body: { id: 1, warnings: [{ code: 'parameter_ignored', message: 'ignored' }] }.to_json)
+
+    assert_raises(Broadcast::WarningError) { dm.deliver!(mail) }
   end
 
   # --- Client reuse ---

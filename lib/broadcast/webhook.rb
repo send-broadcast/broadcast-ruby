@@ -7,6 +7,40 @@ module Broadcast
   module Webhook
     TIMESTAMP_TOLERANCE = 300 # 5 minutes
 
+    # Every event type a webhook endpoint can subscribe to, mirroring
+    # WebhookEndpoint::AVAILABLE_EVENT_TYPES server-side. Use these when
+    # creating an endpoint — an unknown event type is dropped silently.
+    EMAIL_EVENTS = %w[
+      email.sent email.delivered email.delivery_delayed email.complained
+      email.bounced email.opened email.clicked email.failed
+    ].freeze
+
+    SUBSCRIBER_EVENTS = %w[
+      subscriber.created subscriber.updated subscriber.deleted
+      subscriber.subscribed subscriber.unsubscribed subscriber.bounced
+      subscriber.complained
+    ].freeze
+
+    BROADCAST_EVENTS = %w[
+      broadcast.scheduled broadcast.queueing broadcast.sending broadcast.sent
+      broadcast.failed broadcast.partial_failure broadcast.aborted
+      broadcast.paused
+    ].freeze
+
+    SEQUENCE_EVENTS = %w[
+      sequence.subscriber_added sequence.subscriber_completed
+      sequence.subscriber_moved sequence.subscriber_removed
+      sequence.subscriber_paused sequence.subscriber_resumed
+      sequence.subscriber_error
+    ].freeze
+
+    # Delivery-machinery events, not content events.
+    SYSTEM_EVENTS = %w[message.attempt.exhausted test.webhook].freeze
+
+    EVENT_TYPES = (
+      EMAIL_EVENTS + SUBSCRIBER_EVENTS + BROADCAST_EVENTS + SEQUENCE_EVENTS + SYSTEM_EVENTS
+    ).freeze
+
     module_function
 
     def verify(payload, signature_header, timestamp_header, secret:, now: nil)

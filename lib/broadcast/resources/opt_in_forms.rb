@@ -24,6 +24,18 @@ module Broadcast
       # Nested settings hashes (theme_settings, automation_settings, security_settings,
       # trigger_settings, widget_settings) and arrays (opt_in_form_blocks_attributes,
       # opt_in_post_submission_blocks_attributes) are passed through verbatim.
+      #
+      # Core:
+      #   label:, form_type:, widget_type:, enabled:, allowed_embedding_domains:
+      #
+      # Confirmation / welcome flow:
+      #   confirmation_email_template_id:            Template sent to confirm the address
+      #   welcome_email_template_id:                 Template sent after confirmation
+      #   confirmation_redirect_url:                 where to send the subscriber post-confirm
+      #   include_unsubscribe_link_in_confirmation:  boolean
+      #
+      # Custom fields declared in opt_in_form_blocks_attributes support a
+      # multi-line variant, which renders as a textarea on the hosted form.
       def create(**attrs)
         post('/api/v1/opt_in_forms', { opt_in_form: attrs })
       end

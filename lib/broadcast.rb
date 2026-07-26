@@ -2,7 +2,10 @@
 
 require_relative 'broadcast/version'
 require_relative 'broadcast/errors'
+require_relative 'broadcast/response'
 require_relative 'broadcast/configuration'
+require_relative 'broadcast/debug_logger'
+require_relative 'broadcast/connection'
 require_relative 'broadcast/client'
 require_relative 'broadcast/webhook'
 require_relative 'broadcast/resources/base'
@@ -15,6 +18,9 @@ require_relative 'broadcast/resources/webhook_endpoints'
 require_relative 'broadcast/resources/transactionals'
 require_relative 'broadcast/resources/opt_in_forms'
 require_relative 'broadcast/resources/email_servers'
+require_relative 'broadcast/resources/autopilots'
+require_relative 'broadcast/resources/discovery'
+require_relative 'broadcast/resources/migration'
 
 # ActionMailer integration — only loaded when Rails is present
 if defined?(Rails::Railtie)
