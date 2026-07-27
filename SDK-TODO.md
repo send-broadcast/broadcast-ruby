@@ -155,7 +155,7 @@ The spec now generates from the code. It lives in the `broadcast` repo:
 | `lib/openapi/spec_builder.rb` | Generates OpenAPI 3.1 from `config/routes.rb` + `*_PARAM_KEYS` / `KNOWN_TOP_LEVEL_KEYS` |
 | `lib/openapi/coverage_report.rb` | Scores a client library against the spec |
 | `openapi/overlay.yml` | Hand-written descriptions, response schemas, query params |
-| `openapi/broadcast-api.yaml` | Generated output — 68 paths, 94 operations |
+| `openapi/broadcast-api.yaml` | Generated output — 75 paths, 104 operations (app v2.20.0) |
 
 ```bash
 bin/rails openapi:generate                    # rebuild the spec
@@ -179,7 +179,9 @@ Design notes worth keeping in mind when extending it:
 
 ### Next steps for it
 
-- [ ] Wire `openapi:check` into CI — the guard is worthless unmerged
+- [x] Wire `openapi:check` into CI — runs in the self-hosted matrix leg only;
+      the document is byte-identical in both modes, so checking twice only
+      costs time
 - [ ] Fill in response schemas in the overlay, resource by resource
 - [ ] Generate the Node SDK's types from the spec rather than hand-writing them
 - [ ] Derive MCP tool schemas from it (compare against `prime`'s `CAPABILITY_MAP`,

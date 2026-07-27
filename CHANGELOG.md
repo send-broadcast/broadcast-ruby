@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+Documentation only — no code changes, no behaviour change.
+
+- **Autopilot is documented in the README.** 0.3.0 shipped the `Autopilots`
+  resource with ten endpoints and no README section, so the only user-facing
+  description of it was the source. Adds lifecycle, runs, the write-only
+  `openrouter_api_key` guard, and the `autopilot_read` / `autopilot_write` row
+  in the permissions table.
+- **`SDK-COVERAGE.md` contradicted itself on Autopilot** — listed at 10/10 in
+  the endpoint map and simultaneously under "Not in the API at all" with "zero
+  autopilot routes". The latter was true when written and is now removed; the
+  section explains what closed it, and records that autopilot sources and tone
+  samples remain web-only.
+- Corrected the API version header (2.19.0 → **2.20.0**) and the spec size in
+  `SDK-TODO.md` (68 paths / 94 operations → **75 / 104**).
+- Marked `openapi:check` in CI as done — it has been running in the self-hosted
+  matrix leg but was still listed as pending.
+- Documented how a **demo instance** answers: the migration API returns 403 for
+  every request including valid tokens, and transactional sends are accepted
+  but never delivered.
+
 ## [0.3.0] - 2026-07-26
 
 Catches the gem up to the Broadcast v2.19 API. The API gained a response-warnings

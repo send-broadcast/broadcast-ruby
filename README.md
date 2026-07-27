@@ -1079,6 +1079,91 @@ The signature is computed as `HMAC-SHA256(timestamp + "." + payload, secret)`. T
 
 ---
 
+## Autopilot
+
+AI-generated newsletters. An autopilot reads your configured sources on a
+schedule, drafts copy in the tone you describe, and produces broadcast drafts
+for review. Requires `autopilot_read` / `autopilot_write`.
+
+```ruby
+client.autopilots.list
+client.autopilots.get_autopilot(id)
+
+autopilot = client.autopilots.create(
+  name: 'Weekly Roundup',
+  openrouter_api_key: ENV['OPENROUTER_API_KEY'],
+  ai_model: 'openai/gpt-4o',
+  schedule_frequency: 'weekly',
+  schedule_day_of_week: 1,
+  schedule_time: '09:00',
+  schedule_timezone: 'America/New_York',
+  copies_to_generate: 3,
+  tone_description: 'Direct and technical. No hype.',
+  content_instructions: 'Lead with the most consequential change.',
+  segment_ids: [ 12 ]
+)
+
+client.autopilots.update(autopilot['id'], copies_to_generate: 5)
+client.autopilots.delete(autopilot['id'])
+```
+
+### Lifecycle
+
+```ruby
+client.autopilots.activate(id)     # start running on schedule
+client.autopilots.pause(id)        # keep config, stop generating
+client.autopilots.deactivate(id)
+```
+
+`activate` requires **at least one active source, an API key, and a model**. If
+any is missing it raises `Broadcast::ValidationError` naming the prerequisites:
+
+```ruby
+begin
+  client.autopilots.activate(id)
+rescue Broadcast::ValidationError => e
+  # All missing prerequisites, comma-joined:
+  e.message # => "At least one active source is required, AI model is required"
+end
+```
+
+Sources and tone samples have **no API endpoints yet** — they are configured in
+the web UI. Since `activate` needs an active source, a brand-new autopilot
+created over the API cannot be activated until a source is added there.
+
+### Runs
+
+`trigger_run` queues generation immediately and returns `202` — the work is
+asynchronous, so poll rather than expecting finished copy back:
+
+```ruby
+run = client.autopilots.trigger_run(id)
+run['status']   # => "pending"
+
+client.autopilots.runs(id, limit: 10)   # most recent first
+```
+
+### API key handling
+
+`openrouter_api_key` is write-only. It is encrypted at rest and never returned —
+reads expose only `api_key_configured`. The API renders a configured key
+bullet-masked, and writing that mask back would replace a working credential
+with bullets, so `update` strips it and warns:
+
+```ruby
+current = client.autopilots.get_autopilot(id)
+current['api_key_configured']   # => true
+current['openrouter_api_key']   # => nil — never returned
+
+# Safe: the masked value is dropped, the stored key survives
+client.autopilots.update(id, openrouter_api_key: '••••••••', ai_model: 'openai/gpt-4o')
+```
+
+Pass the real key to rotate it, or omit the field entirely. This is the same
+guard as [Email Servers](#credential-redaction).
+
+---
+
 ## Discovery
 
 Ask the instance what this token can do and whether the channel is ready to
@@ -1225,6 +1310,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Opt-In Forms | `opt_in_forms_read` -- list, get, analytics | `opt_in_forms_write` -- create, update, delete, create_variant, duplicate |
 | Email Servers | `email_servers_read` -- list, get | `email_servers_write` -- create, update, delete, test_connection, copy_to_channel (admin) |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
+| Autopilot | `autopilot_read` -- list, get, runs | `autopilot_write` -- create, update, delete, activate, pause, deactivate, trigger_run |
 
 ---
 
