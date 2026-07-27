@@ -4,6 +4,36 @@ Which client libraries to build, in what order, and what "feature parity"
 concretely means for each. `broadcast-ruby` is the reference implementation —
 its per-release work is tracked in [TODO.md](TODO.md).
 
+## Status — 2026-07-27
+
+| SDK | Repo | Coverage | Tests |
+|---|---|---|---|
+| Ruby (reference) | `broadcast-ruby` | 104/104 | 292 passing |
+| TypeScript / Node | `broadcast-node` | 104/104 | 148 passing |
+| Python | `broadcast-python` | 104/104 | 132 passing |
+| PHP | `broadcast-php` | 104/104 | **written, never run** — see below |
+| MCP server | — | — | not started |
+| Go | — | — | deferred |
+
+Coverage is `rake openapi:coverage` in the `broadcast` repo, which scans client
+source against the generated spec. It measures **endpoints reached**, not
+parameter or response correctness — see
+[Limits of the 100%](SDK-COVERAGE.md#limits-of-the-100).
+
+Verified across languages beyond the per-repo suites:
+
+- All four declare the same **32 webhook event names**, byte-identical.
+- All four declare the same **8 redacted credential fields** and **18 migration
+  collections**.
+- Ruby, Node and Python compute an **identical HMAC signature** for the same
+  payload/timestamp/secret. PHP was not checked — no interpreter available.
+
+**PHP carries a real caveat.** Its PHPUnit suite has never been executed: no
+`php` or `composer` binary existed on the build machine. The 104/104 figure is
+genuine (that report needs no PHP), and a static pass confirms PSR-4 layout and
+balanced syntax across all 42 files, but no assertion has ever evaluated. Run
+`composer install && composer test` before shipping it.
+
 > Lives in this repo because Ruby is the reference SDK. If the roadmap starts
 > driving work in other repos, move it to `broadcast` (the product repo) and
 > leave a pointer here.
@@ -12,7 +42,10 @@ its per-release work is tracked in [TODO.md](TODO.md).
 
 ## Build order
 
-### 1. TypeScript / Node — `@broadcast/sdk`
+### 1. TypeScript / Node — `@broadcast/sdk` — **built**
+
+Lives in `broadcast-node`. 104/104 operations, 148 tests, ESM + CJS dual build
+with generated `.d.ts`. Node 18+, native `fetch`, zero runtime dependencies.
 
 Highest priority, for two reasons that have nothing to do with ecosystem size.
 
@@ -25,10 +58,18 @@ setup guide today hits a dead end. Either build it or pull the page.
 publish a TypeScript SDK first. A Ruby-only client makes Broadcast read like a
 Rails side-project rather than a platform, regardless of how good the API is.
 
-- [ ] Full parity matrix (below)
-- [ ] Real types for resource payloads, not `Record<string, unknown>`
-- [ ] ESM + CJS dual build; Node 18+ (native `fetch`, `AbortController`)
-- [ ] Edge-runtime safe (no `node:crypto` in the hot path except webhook verify)
+- [x] Full parity matrix (below)
+- [x] ESM + CJS dual build; Node 18+ (native `fetch`, `AbortController`)
+- [x] Edge-runtime safe (`node:crypto` is imported only by webhook verify)
+- [ ] Real types for resource payloads, not `any` — request params are typed
+      per resource, but response bodies are not modelled. Blocked on the same
+      thing the spec is: response schemas in `openapi/overlay.yml`.
+
+One deliberate divergence from the Ruby gem, forced by the language: response
+metadata is read through `meta(result)` rather than accessors on the returned
+object. Ruby gets two namespaces free from `Response < Hash`; JavaScript does
+not, and Broadcast returns body fields named both `status` and `warnings`,
+which accessors would shadow.
 
 ### 2. MCP server — `@broadcast/mcp-server`
 
@@ -52,7 +93,7 @@ Everything is in place except the MCP binary itself. Build it on the Node SDK.
       already promise this)
 - [ ] Make the published docs page true
 
-### 3. PHP — `broadcast/broadcast-php`
+### 3. PHP — `broadcast/broadcast-php` — **built, unverified**
 
 This is a distribution decision more than an SDK decision. Email-marketing
 buyers skew heavily WordPress, and a PHP SDK is the prerequisite for a
@@ -60,17 +101,33 @@ WordPress plugin (opt-in form embedding + subscriber sync), which is a real
 acquisition channel rather than a convenience. Laravel support comes along for
 free.
 
-- [ ] PSR-18 HTTP client, PSR-3 logging
-- [ ] Composer package, PHP 8.1+
+- [x] Composer package, PHP 8.1+
+- [x] PSR-3 logging
+- [x] Pluggable HTTP transport — a one-method `HttpClientInterface` rather than
+      PSR-18. PSR-18 would pull in `psr/http-message`, `psr/http-factory` and a
+      concrete implementation for one request and one response; the bundled
+      `CurlHttpClient` keeps `composer require` free of transitive deps, which
+      matters for the WordPress audience this SDK exists to serve. A PSR-18
+      client adapts onto the interface in a few lines.
+- [ ] **Run the test suite.** Never executed — no php/composer on the build
+      machine. This is the one blocking item.
 - [ ] Then: WordPress plugin on top of it (separate repo, separate roadmap)
 
-### 4. Python — `broadcast-python`
+### 4. Python — `broadcast-python` — **built**
+
+Lives in `broadcast-python`. 104/104 operations, 132 tests. No runtime
+dependencies — the transport is `urllib`, so it cannot conflict with a pinned
+`requests` or `httpx` in the host environment. The suite uses `unittest`, so it
+needs no test dependencies either.
 
 Django/FastAPI apps, plus the "nightly script that syncs our CRM" crowd.
 Straightforward, steady demand, no strategic angle beyond coverage.
 
-- [ ] Sync client first; async (`httpx`) second
-- [ ] Type hints throughout, `py.typed` marker
+- [x] Sync client first
+- [x] Type hints throughout, `py.typed` marker
+- [ ] Async client — deliberately deferred. Adding `httpx` would cost the
+      zero-dependency property, which is worth more to the "nightly script that
+      syncs our CRM" audience than async is.
 
 ### 5. Go — deferred
 
@@ -83,8 +140,14 @@ materialise.
 ## Parity matrix
 
 Every SDK ships all of this before it is announced. A client that covers the
-resources but skips the transport column below is the situation Ruby is in
-right now — it looks complete and quietly loses information.
+resources but skips the transport column below looks complete and quietly loses
+information — which is the state Ruby was in before v0.3.0, and the reason this
+matrix exists.
+
+**All four SDKs now implement every row below**, each with its own tests. The
+transport rows are the ones worth re-checking when adding a fifth language:
+resource coverage is measured automatically by `rake openapi:coverage`, and
+nothing measures the transport contract but these tests.
 
 ### Transport
 

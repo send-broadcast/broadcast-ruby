@@ -3,6 +3,13 @@
 What this gem covers, what it deliberately doesn't, and what the Broadcast
 application can do that no client can reach.
 
+> **This file describes the Ruby gem specifically.** Since 2026-07-27 there are
+> three sibling SDKs — `broadcast-node`, `broadcast-python`, `broadcast-php` —
+> all at 104/104 against the same spec. The endpoint map below applies to all
+> of them (the paths are identical); only the method names differ. Per-language
+> status, including the caveat that PHP's suite has never been run, is in
+> [SDK-TODO.md](SDK-TODO.md#status--2026-07-27).
+
 **Headline: 104/104 API operations (100%).**
 
 That number is narrower than it sounds, and [Limits of the 100%](#limits-of-the-100)
