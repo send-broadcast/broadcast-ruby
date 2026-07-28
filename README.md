@@ -1,8 +1,12 @@
 # broadcast-ruby
 
-Ruby client for the [Broadcast](https://sendbroadcast.net) email platform.
+Official Ruby client for [Broadcast](https://sendbroadcast.net), the self-hosted email marketing platform.
 
-Works with any Broadcast instance — self-hosted or SaaS.
+Works with any Broadcast instance — self-hosted or SaaS. Covers **104/104 API operations**, verified against the API's generated OpenAPI document.
+
+📖 **[Ruby SDK documentation](https://sendbroadcast.net/docs/ruby-sdk)** · [API reference](https://sendbroadcast.net/docs/api-authentication) · [All docs](https://sendbroadcast.net/docs)
+
+Also available: [PHP](https://github.com/send-broadcast/broadcast-php) · [Node/TypeScript](https://github.com/send-broadcast/broadcast-node) · [Python](https://github.com/send-broadcast/broadcast-python)
 
 ## Installation
 
@@ -60,7 +64,7 @@ export BROADCAST_API_TOKEN=your-token
 client = Broadcast::Client.new  # picks both up from ENV
 ```
 
-### Options
+## Configuration
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -71,21 +75,37 @@ client = Broadcast::Client.new  # picks both up from ENV
 | `retry_attempts` | `3` | Max total attempts (1 initial + 2 retries). Server errors (5xx), timeouts, and rate limits (429) are retried; other client errors (4xx) are not |
 | `retry_delay` | `1` | Base delay between retries in seconds (multiplied by attempt number) |
 | `max_retry_delay` | `30` | Ceiling for a server-supplied `Retry-After`, so a long rate-limit window can't stall the caller |
-| `warnings_mode` | `:log` | How to handle API warnings — `:log`, `:raise`, or `:ignore`. See [API Warnings](#api-warnings) |
+| `warnings_mode` | `:log` | How to handle API warnings — `:log`, `:raise`, or `:ignore`. See [Warnings](#warnings) |
 | `debug` | `false` | Log request/response details (credentials are redacted) |
 | `logger` | `nil` | Logger instance for debug output (e.g. `Rails.logger`) |
 | `broadcast_channel_id` | `nil` | Auto-included on every request when set. Required when using an admin/system token (regular tokens are channel-scoped already). Can be overridden per-call or via `client.with_channel(id) { ... }` |
-
-All methods return parsed JSON as Ruby Hashes with string keys. The returned
-object is a `Broadcast::Response` — a Hash subclass that also carries response
-metadata (`#warnings`, `#rate_limit`, `#status`, `#idempotent_replay?`).
-Anything that worked against a plain Hash still works.
 
 > **Note on module naming:** This gem defines a top-level `Broadcast` module. If your application already has a `Broadcast` class or module (e.g. an ActiveRecord model), you may encounter a namespace collision.
 
 ---
 
-## API Warnings
+## Responses
+
+Every call returns parsed JSON as a Ruby Hash with string keys, so `result['id']`
+works as you would expect. The returned object is a `Broadcast::Response` — a Hash
+subclass that also carries the transport metadata:
+
+```ruby
+result = client.subscribers.create(email: 'ada@example.com')
+
+result['id']                   # the response body
+result.status                  # 201
+result.warnings                # parsed warnings, if any
+result.rate_limit&.remaining   # requests left in the window
+result.idempotent_replay?      # true if the API replayed a stored response
+```
+
+Anything that worked against a plain Hash still works — `dig`, `is_a?(Hash)`,
+equality against a literal Hash, splatting.
+
+---
+
+## Warnings
 
 Broadcast accepts a write and then tells you what it ignored. A misspelled
 attribute, a parameter that only applies in another mode, a value the server
@@ -942,7 +962,7 @@ admin_client.email_servers.copy_to_channel(99, target_channel_id: 7)
 
 ---
 
-## Channel Scoping (Admin/System Tokens)
+## Channel Scoping
 
 Regular API tokens are scoped to a single broadcast channel automatically. Admin/system tokens are not -- they require `broadcast_channel_id` on every request to indicate which channel they're acting on.
 
@@ -976,7 +996,7 @@ end
 
 ---
 
-## Webhook Endpoints
+## Webhooks
 
 Receive real-time notifications when events occur (email delivered, subscriber created, sequence completed, etc.).
 
@@ -1199,7 +1219,7 @@ raise 'channel not ready to send' unless client.status.dig('readiness', 'broadca
 
 ---
 
-## Export & Migration (admin tokens only)
+## Export & Migration
 
 Read-only endpoints under `/api/migration/v1` for backups and moving a channel
 between instances. Two constraints differ from the rest of the API:
@@ -1264,7 +1284,7 @@ File.binwrite('logo.png', bytes)
 
 ---
 
-## Error Handling
+## Errors
 
 All API errors inherit from `Broadcast::Error`. Put specific errors before general ones:
 
@@ -1353,6 +1373,25 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 - **Check delivery method:** Ensure `config.action_mailer.delivery_method = :broadcast` is set in the right environment file (not development or test).
 - **Check credentials:** Run `bin/rails credentials:show` and verify `broadcast.api_token` is set.
 - **Check logs:** Set `debug: true` in `broadcast_settings` to see request/response details.
+
+## Documentation
+
+- **[Ruby SDK guide](https://sendbroadcast.net/docs/ruby-sdk)** — the same material as this README, on the docs site
+- **[API reference](https://sendbroadcast.net/docs/api-authentication)** — endpoints, parameters, and permissions
+- **[API response warnings](https://sendbroadcast.net/docs/api-response-warnings)** — why a 2xx can still tell you something went wrong
+- **[Webhook endpoints](https://sendbroadcast.net/docs/api-webhook-endpoints)** — signature format and event types
+- **[Agents CLI](https://sendbroadcast.net/docs/agents-cli)** — the same credentials, from a terminal
+
+### Other SDKs
+
+| Language | Package | Repository |
+|---|---|---|
+| Ruby | [broadcast-ruby](https://rubygems.org/gems/broadcast-ruby) | this repository |
+| PHP | broadcast/broadcast-php | [broadcast-php](https://github.com/send-broadcast/broadcast-php) |
+| Node / TypeScript | @broadcast/sdk | [broadcast-node](https://github.com/send-broadcast/broadcast-node) |
+| Python | broadcast-python | [broadcast-python](https://github.com/send-broadcast/broadcast-python) |
+
+All four cover the same 104 operations and behave the same way on the wire — the transport contract (warnings, idempotency, rate-limit handling, redirect safety, credential redaction) is identical across languages.
 
 ## License
 
