@@ -16,8 +16,11 @@ its per-release work is tracked in [TODO.md](TODO.md).
 | Go | — | — | deferred |
 
 Coverage is `rake openapi:coverage` in the `broadcast` repo, which scans client
-source against the generated spec. It measures **endpoints reached**, not
-parameter or response correctness — see
+source against the generated spec, and `rake openapi:coverage_check`, which is
+the same measurement as a pass/fail gate — it runs on every CI build of the
+`broadcast` repo, so an endpoint added to the API now fails the build until
+every SDK implements it. It measures **endpoints reached**, not parameter or
+response correctness — see
 [Limits of the 100%](SDK-COVERAGE.md#limits-of-the-100).
 
 Verified across languages beyond the per-repo suites:
@@ -42,7 +45,7 @@ balanced syntax across all 42 files, but no assertion has ever evaluated. Run
 
 ## Build order
 
-### 1. TypeScript / Node — `@broadcast/sdk` — **built**
+### 1. TypeScript / Node — `@send-broadcast/sdk` — **built**
 
 Lives in `broadcast-node`. 104/104 operations, 148 tests, ESM + CJS dual build
 with generated `.d.ts`. Node 18+, native `fetch`, zero runtime dependencies.
@@ -245,6 +248,10 @@ Design notes worth keeping in mind when extending it:
 - [x] Wire `openapi:check` into CI — runs in the self-hosted matrix leg only;
       the document is byte-identical in both modes, so checking twice only
       costs time
+- [x] Gate SDK coverage in CI — `rake openapi:coverage_check` clones all four
+      clients and fails the build if any is missing an operation or calls a path
+      the spec does not have. Previously `openapi:check` caught a stale spec
+      while every client could quietly fall to 103/104 and stay green.
 - [ ] Fill in response schemas in the overlay, resource by resource
 - [ ] Generate the Node SDK's types from the spec rather than hand-writing them
 - [ ] Derive MCP tool schemas from it (compare against `prime`'s `CAPABILITY_MAP`,
