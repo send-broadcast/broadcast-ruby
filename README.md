@@ -962,6 +962,37 @@ admin_client.email_servers.copy_to_channel(99, target_channel_id: 7)
 
 ---
 
+## Suppressions
+
+A suppressed address is one Broadcast will not email. Each channel has its own list, and the installation has a global one; `client.suppressions` manages the current channel's list:
+
+```ruby
+client.suppressions.check('ada@example.com')     # will this address receive mail?
+client.suppressions.list(page: 1, email: 'example.com')
+client.suppressions.add('bounced@example.com')
+client.suppressions.remove('bounced@example.com')
+client.suppressions.bulk_add(['a@example.com', 'b@example.com'])   # up to 10,000
+client.suppressions.bulk_remove(['a@example.com'])
+```
+
+`check` reads across both the channel's list and the global list, so it answers the question integrations actually ask: will this address receive mail? The response's `scope` says which list matched. Adding an already-suppressed address is a success (200 rather than 201), so there is no need to check first.
+
+Bulk adds are idempotent -- a retried batch cannot duplicate -- and return `added`, `already_suppressed`, and `invalid` counts. `remove` returns `removed: false` (not an error) when the address was not on the list, and never touches the global list.
+
+The global list is a separate resource and **requires an admin/system token**:
+
+```ruby
+client.global_suppressions.list
+client.global_suppressions.add('spamtrap@example.com')
+client.global_suppressions.remove('spamtrap@example.com')
+client.global_suppressions.bulk_add([...])
+client.global_suppressions.bulk_remove([...])
+```
+
+Removing an address globally does not unblock it in channels that suppressed it on their own account. There is no `check` on the global resource: checking is a per-channel question, so it lives on `client.suppressions`.
+
+---
+
 ## Channel Scoping
 
 Regular API tokens are scoped to a single broadcast channel automatically. Admin/system tokens are not -- they require `broadcast_channel_id` on every request to indicate which channel they're acting on.
@@ -1331,6 +1362,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Email Servers | `email_servers_read` -- list, get | `email_servers_write` -- create, update, delete, test_connection, copy_to_channel (admin) |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
 | Autopilot | `autopilot_read` -- list, get, runs | `autopilot_write` -- create, update, delete, activate, pause, deactivate, trigger_run |
+| Suppressions | `suppressions_read` -- list, check | `suppressions_write` -- add, remove, bulk add/remove |
 
 ---
 
@@ -1388,10 +1420,10 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 |---|---|---|
 | Ruby | [broadcast-ruby](https://rubygems.org/gems/broadcast-ruby) | this repository |
 | PHP | broadcast/broadcast-php | [broadcast-php](https://github.com/send-broadcast/broadcast-php) |
-| Node / TypeScript | @broadcast/sdk | [broadcast-node](https://github.com/send-broadcast/broadcast-node) |
+| Node / TypeScript | @send-broadcast/sdk | [broadcast-node](https://github.com/send-broadcast/broadcast-node) |
 | Python | broadcast-python | [broadcast-python](https://github.com/send-broadcast/broadcast-python) |
 
-All four cover the same 104 operations and behave the same way on the wire — the transport contract (warnings, idempotency, rate-limit handling, redirect safety, credential redaction) is identical across languages.
+All four cover the same 115 operations and behave the same way on the wire — the transport contract (warnings, idempotency, rate-limit handling, redirect safety, credential redaction) is identical across languages.
 
 ## License
 
