@@ -108,6 +108,18 @@ module Broadcast
       @discovery ||= Resources::Discovery.new(self)
     end
 
+    # The current channel's suppression list (plus `check`, which reads the
+    # global list too).
+    def suppressions
+      @suppressions ||= Resources::Suppressions.new(self)
+    end
+
+    # The installation-wide suppression list. Requires an admin (system) API
+    # token.
+    def global_suppressions
+      @global_suppressions ||= Resources::GlobalSuppressions.new(self)
+    end
+
     # Read-only export endpoints under /api/migration/v1. Requires an admin
     # (system) API token.
     def migration
