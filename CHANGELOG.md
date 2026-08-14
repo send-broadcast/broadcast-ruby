@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-14
+
 ### Fixed — ActionMailer delivery
 
 Both reproduced from a real delivered message, and both traced to the same
