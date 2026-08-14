@@ -26,12 +26,20 @@ ceiling: `Client#send_email` accepted only `to`/`subject`/`body`/`reply_to`, so
   `Configuration` has no such attribute.
 
 `Client#send_email` gained matching optional `html_body:` and
-`include_unsubscribe_link:` keywords. Both are omitted from the payload when
-nil, so existing callers are unaffected.
+`include_unsubscribe_link:` keywords. Both are omitted from the payload when nil,
+so direct callers of `send_email` are unaffected.
+
+**Upgrade note.** ActionMailer deliveries change shape, not just API surface.
+Mail that previously went out flagged as plain text is now flagged as HTML, and
+mail that previously carried `List-Unsubscribe` no longer does. Both are the
+point of the fix, but an app that relied on the unsubscribe footer appearing on
+ActionMailer sends should set `include_unsubscribe_link: true` in
+`broadcast_settings` to keep it.
 
 ### Documentation
 
-Documentation only — no code changes, no behaviour change.
+The entries below are documentation only; the behaviour changes in this release
+are the ActionMailer fixes above.
 
 - **Autopilot is documented in the README.** 0.3.0 shipped the `Autopilots`
   resource with ten endpoints and no README section, so the only user-facing
