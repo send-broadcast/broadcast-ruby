@@ -44,8 +44,10 @@ module Broadcast
     # footer and List-Unsubscribe header. Transactional mail wants that off: a
     # one-click unsubscribe on a password reset marks the person unsubscribed
     # and silently drops them from every sequence and broadcast.
+    # rubocop:disable Metrics/ParameterLists -- mirrors the API's flat param surface
     def send_email(to:, subject: nil, body: nil, reply_to: nil,
                    html_body: nil, include_unsubscribe_link: nil)
+      # rubocop:enable Metrics/ParameterLists
       opts = { to: to, subject: subject, body: body, reply_to: reply_to }
       opts[:html_body] = html_body unless html_body.nil?
       opts[:include_unsubscribe_link] = include_unsubscribe_link unless include_unsubscribe_link.nil?
