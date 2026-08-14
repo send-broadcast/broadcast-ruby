@@ -196,6 +196,98 @@ class TestDeliveryMethod < Minitest::Test
     assert_requested(:post, "#{HOST}/api/v1/transactionals.json", times: 2)
   end
 
+  # --- HTML flagging (regression: nested HTML documents) ---
+  #
+  # Reproduces a real delivered message. deliver! sent an HTML body without
+  # telling Broadcast it was HTML, so Broadcast recorded the send as plain text
+  # and wrapped the payload in its own <html><body> shell. The delivered part
+  # then contained two nested complete HTML documents. Gmail tolerated it;
+  # Outlook is far less forgiving, and it is malformed either way.
+
+  def test_flags_html_body_when_the_mail_has_an_html_part
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Hello'
+      html_part { body '<p>Hi there</p>' }
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .with(body: hash_including('html_body' => true))
+      .to_return(status: 200, body: { id: 1 }.to_json)
+
+    @dm.deliver!(mail)
+  end
+
+  def test_does_not_flag_html_body_for_plain_text_mail
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Hello'
+      body 'Plain text'
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .with { |req| !JSON.parse(req.body).fetch('html_body', false) }
+      .to_return(status: 200, body: { id: 1 }.to_json)
+
+    @dm.deliver!(mail)
+  end
+
+  # --- Unsubscribe suppression (regression: unsubscribe on a password reset) ---
+  #
+  # Reproduces a real delivered message. A password reset arrived carrying
+  # List-Unsubscribe and List-Unsubscribe-Post: One-Click, because deliver!
+  # could not say "this is transactional" and the channel's unsubscribe setting
+  # applied to it. Clicking it marks the person unsubscribed, silently excluding
+  # them from every sequence and broadcast — from a click on a security email.
+
+  def test_suppresses_the_unsubscribe_link_by_default
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Reset your password'
+      body 'Reset link'
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .with(body: hash_including('include_unsubscribe_link' => false))
+      .to_return(status: 200, body: { id: 1 }.to_json)
+
+    @dm.deliver!(mail)
+  end
+
+  def test_unsubscribe_link_can_be_opted_back_in_via_settings
+    dm = Broadcast::DeliveryMethod.new(@settings.merge(include_unsubscribe_link: true))
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Hello'
+      body 'Hi'
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .with(body: hash_including('include_unsubscribe_link' => true))
+      .to_return(status: 200, body: { id: 1 }.to_json)
+
+    dm.deliver!(mail)
+  end
+
+  # Intent: the option is consumed by the delivery method, not forwarded into
+  # Client, whose Configuration would reject an unknown key.
+  def test_settings_option_does_not_leak_into_the_client
+    mail = Mail.new do
+      to 'user@example.com'
+      subject 'Hello'
+      body 'Hi'
+    end
+
+    stub_request(:post, "#{HOST}/api/v1/transactionals.json")
+      .to_return(status: 200, body: { id: 1 }.to_json)
+
+    # Constructing is the assertion: Configuration#include_unsubscribe_link= does
+    # not exist, so a leak raises NoMethodError here.
+    dm = Broadcast::DeliveryMethod.new(@settings.merge(include_unsubscribe_link: false))
+    assert_instance_of Broadcast::DeliveryMethod, dm
+    dm.deliver!(mail)
+  end
+
   # --- Error wrapping ---
 
   def test_wraps_api_errors

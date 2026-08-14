@@ -36,8 +36,21 @@ module Broadcast
     # Thin convenience wrapper around `transactionals.create`. Use
     # `client.transactionals.create` directly for template_id, double_opt_in,
     # preheader, idempotency_key, and other advanced options.
-    def send_email(to:, subject: nil, body: nil, reply_to: nil)
-      transactionals.create(to: to, subject: subject, body: body, reply_to: reply_to)
+    # `html_body` tells Broadcast the body is already HTML. Without it the send
+    # is recorded as plain text and the payload is wrapped in Broadcast's own
+    # <html><body> shell, so an HTML mail arrives as two nested documents.
+    #
+    # `include_unsubscribe_link` lets the caller suppress the unsubscribe
+    # footer and List-Unsubscribe header. Transactional mail wants that off: a
+    # one-click unsubscribe on a password reset marks the person unsubscribed
+    # and silently drops them from every sequence and broadcast.
+    def send_email(to:, subject: nil, body: nil, reply_to: nil,
+                   html_body: nil, include_unsubscribe_link: nil)
+      opts = { to: to, subject: subject, body: body, reply_to: reply_to }
+      opts[:html_body] = html_body unless html_body.nil?
+      opts[:include_unsubscribe_link] = include_unsubscribe_link unless include_unsubscribe_link.nil?
+
+      transactionals.create(**opts)
     end
 
     def get_email(id)

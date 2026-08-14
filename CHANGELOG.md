@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — ActionMailer delivery
+
+Both reproduced from a real delivered message, and both traced to the same
+ceiling: `Client#send_email` accepted only `to`/`subject`/`body`/`reply_to`, so
+`DeliveryMethod` had no way to describe what it was sending.
+
+- **HTML mail arrived as two nested HTML documents.** `deliver!` sent an HTML
+  body without flagging it as HTML, so Broadcast recorded the send as plain text
+  and wrapped the payload in its own `<html><body>` shell. `deliver!` now sends
+  `html_body: true` when the mail has an `html_part`.
+- **Transactional mail carried a one-click unsubscribe.** A password reset
+  arrived with `List-Unsubscribe` and `List-Unsubscribe-Post: One-Click`,
+  because `deliver!` could not say the send was transactional and the channel's
+  unsubscribe setting applied to it. Clicking it marks the recipient
+  unsubscribed, silently dropping them from every sequence and broadcast — from
+  a click on a security email. `deliver!` now sends
+  `include_unsubscribe_link: false` by default; set
+  `include_unsubscribe_link: true` in `broadcast_settings` to opt back in. The
+  option is consumed by `DeliveryMethod` rather than forwarded, since
+  `Configuration` has no such attribute.
+
+`Client#send_email` gained matching optional `html_body:` and
+`include_unsubscribe_link:` keywords. Both are omitted from the payload when
+nil, so existing callers are unaffected.
+
+### Documentation
+
 Documentation only — no code changes, no behaviour change.
 
 - **Autopilot is documented in the README.** 0.3.0 shipped the `Autopilots`
