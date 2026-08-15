@@ -31,6 +31,18 @@ module Broadcast
       def skill
         @client.request(:get, '/api/v1/skill', nil, raw: true)
       end
+
+      # This installation's own OpenAPI document, as YAML. Returns a String,
+      # not a Hash — the endpoint serves application/yaml.
+      #
+      # The server URL in the document is rewritten by the installation to the
+      # host that served it, so the result feeds a client generator or an API
+      # explorer without hand-editing. Worth preferring over a spec copied from
+      # anywhere else: a 2.28 install serves the 2.28 surface, so the document
+      # cannot drift from the routes it describes.
+      def openapi
+        @client.request(:get, '/api/v1/openapi', nil, raw: true)
+      end
     end
   end
 end

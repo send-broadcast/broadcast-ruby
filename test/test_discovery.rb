@@ -61,6 +61,23 @@ class TestDiscovery < Minitest::Test
     assert_raises(Broadcast::AuthenticationError) { @client.skill }
   end
 
+  # /api/v1/openapi serves application/yaml, so like #skill it must bypass JSON
+  # parsing and come back as a String.
+  def test_openapi_returns_the_yaml_document
+    body = "openapi: 3.1.0\ninfo:\n  title: Broadcast API\n"
+    stub_request(:get, "#{HOST}/api/v1/openapi")
+      .to_return(status: 200, body: body, headers: { 'Content-Type' => 'application/yaml; charset=utf-8' })
+
+    assert_equal body, @client.openapi
+  end
+
+  def test_openapi_errors_still_raise
+    stub_request(:get, "#{HOST}/api/v1/openapi")
+      .to_return(status: 401, body: { error: 'Unauthorized' }.to_json)
+
+    assert_raises(Broadcast::AuthenticationError) { @client.openapi }
+  end
+
   def test_discovery_sub_client_is_memoized
     assert_same @client.discovery, @client.discovery
     assert_instance_of Broadcast::Resources::Discovery, @client.discovery

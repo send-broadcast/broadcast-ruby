@@ -77,6 +77,10 @@ module Broadcast
       discovery.skill
     end
 
+    def openapi
+      discovery.openapi
+    end
+
     # --- Resource sub-clients ---
 
     def subscribers
