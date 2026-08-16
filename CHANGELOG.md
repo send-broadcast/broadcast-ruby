@@ -16,6 +16,11 @@ Every call was rejected:
 
 Both now nest the attributes under a `subscriber` key.
 
+### Added
+
+- `Discovery#openapi` for `GET /api/v1/openapi`, which returns the
+  installation's own OpenAPI document.
+
 This was invisible to the test suite because the tests asserted the shape the
 code already sent (`hash_including('email' => ...)` at the top level) rather
 than the shape the server requires — so they encoded the bug instead of
