@@ -64,16 +64,22 @@ class TestSequences < Minitest::Test
 
   # --- Enrollment ---
 
-  def test_add_subscriber
+  # The API reads these through `params.require(:subscriber)`, so the attributes
+  # have to be nested under a `subscriber` key. Sent flat, the server rejects the
+  # call with "param is missing or the value is empty or invalid: subscriber" —
+  # which is what it did in production until 0.4.1.
+  def test_add_subscriber_nests_attributes_under_subscriber
     stub_request(:post, "#{HOST}/api/v1/sequences/1/add_subscriber")
-      .with(body: hash_including('email' => 'jane@example.com'))
+      .with(body: { subscriber: { email: 'jane@example.com', first_name: 'Jane' } })
       .to_return(status: 201, body: {}.to_json)
 
-    @seq.add_subscriber(1, email: 'jane@example.com')
+    @seq.add_subscriber(1, email: 'jane@example.com', first_name: 'Jane')
+    assert_requested(:post, "#{HOST}/api/v1/sequences/1/add_subscriber")
   end
 
-  def test_remove_subscriber
+  def test_remove_subscriber_nests_attributes_under_subscriber
     stub_request(:delete, "#{HOST}/api/v1/sequences/1/remove_subscriber")
+      .with(body: { subscriber: { email: 'jane@example.com' } })
       .to_return(status: 200, body: {}.to_json)
 
     @seq.remove_subscriber(1, email: 'jane@example.com')

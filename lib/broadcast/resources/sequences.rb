@@ -26,12 +26,17 @@ module Broadcast
 
       # --- Subscriber enrollment ---
 
+      # Both of these nest the attributes under `subscriber`, because the API
+      # reads them with `params.require(:subscriber)`. Sent flat they are
+      # rejected outright with "param is missing or the value is empty or
+      # invalid: subscriber".
       def add_subscriber(sequence_id, **attrs)
-        post("/api/v1/sequences/#{sequence_id}/add_subscriber", attrs)
+        post("/api/v1/sequences/#{sequence_id}/add_subscriber", { subscriber: attrs })
       end
 
       def remove_subscriber(sequence_id, email:)
-        @client.request(:delete, "/api/v1/sequences/#{sequence_id}/remove_subscriber", { email: email })
+        @client.request(:delete, "/api/v1/sequences/#{sequence_id}/remove_subscriber",
+                        { subscriber: { email: email } })
       end
 
       def list_subscribers(sequence_id, page: 1)

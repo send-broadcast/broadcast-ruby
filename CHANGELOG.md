@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-16
+
+### Fixed — sequence enrolment never worked
+
+`Sequences#add_subscriber` and `#remove_subscriber` sent the subscriber
+attributes flat, but the API reads them with `params.require(:subscriber)`.
+Every call was rejected:
+
+    Broadcast::APIError: param is missing or the value is empty or invalid: subscriber
+
+Both now nest the attributes under a `subscriber` key.
+
+This was invisible to the test suite because the tests asserted the shape the
+code already sent (`hash_including('email' => ...)` at the top level) rather
+than the shape the server requires — so they encoded the bug instead of
+catching it. Found only by a real enrolment against a live instance; the tests
+now pin the nested payload.
+
 ## [0.4.0] - 2026-08-14
 
 ### Fixed — ActionMailer delivery
