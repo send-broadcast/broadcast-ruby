@@ -139,6 +139,11 @@ module Broadcast
       @global_suppressions ||= Resources::GlobalSuppressions.new(self)
     end
 
+    # The token's own channel, e.g. `client.channel.design` for its brand kit.
+    def channel
+      @channel ||= Resources::Channel.new(self)
+    end
+
     # Read-only export endpoints under /api/migration/v1. Requires an admin
     # (system) API token.
     def migration

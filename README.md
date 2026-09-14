@@ -799,6 +799,23 @@ client.templates.update(1, subject: 'Updated subject')
 client.templates.delete(1)
 ```
 
+### Brand Kit
+
+Read the channel's brand kit (Settings → Design) so your own templates can
+match it. Read-only, fully resolved (defaults filled in), and always the
+token's own channel, so it takes no arguments. Needs `templates_read`.
+
+```ruby
+design = client.channel.design
+design['colors']['accent']           # => '#2563eb'
+design['typography']['font']         # => 'georgia'
+design['typography']['font_stack']   # => email-safe CSS font stack
+design['layout']                     # => { 'width' => 600, 'radius' => 8 }
+design['brand']['logo_url']          # => public URL, or nil when no logo is set
+design['brand']['website_url']       # => 'https://acme.example'
+design['brand']['social_links']      # => [{ 'network' => 'x', 'url' => 'https://x.com/acme' }]
+```
+
 ---
 
 ## Opt-In Forms
@@ -1357,7 +1374,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Sequences | `sequences_read` -- list, get, list steps | `sequences_write` -- create, update, delete, manage steps, enroll subscribers |
 | Broadcasts | `broadcasts_read` -- list, get, statistics | `broadcasts_write` -- create, update, delete, send, schedule |
 | Segments | `segments_read` -- list, get | `segments_write` -- create, update, delete |
-| Templates | `templates_read` -- list, get | `templates_write` -- create, update, delete |
+| Templates | `templates_read` -- list, get, channel brand kit (`channel.design`) | `templates_write` -- create, update, delete |
 | Opt-In Forms | `opt_in_forms_read` -- list, get, analytics | `opt_in_forms_write` -- create, update, delete, create_variant, duplicate |
 | Email Servers | `email_servers_read` -- list, get | `email_servers_write` -- create, update, delete, test_connection, copy_to_channel (admin) |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `Channel#design` (`client.channel.design`) for `GET /api/v1/channel/design`,
+  which returns the token's channel brand kit, fully resolved: colours, font
+  key and stack, layout, logo URL, website and social links. Read-only; needs
+  the `templates_read` permission.
+
 ## [0.4.1] - 2026-08-16
 
 ### Fixed — sequence enrolment never worked
