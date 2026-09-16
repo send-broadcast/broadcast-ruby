@@ -1397,8 +1397,8 @@ All API errors inherit from `Broadcast::Error`. Put specific errors before gener
 ```ruby
 begin
   client.send_email(to: 'user@example.com', subject: 'Hi', body: 'Hello')
-rescue Broadcast::AuthenticationError  # 401 -- invalid or expired API token
-rescue Broadcast::AuthorizationError   # 403 -- token lacks the required permission, or admin-only endpoint
+rescue Broadcast::AuthenticationError  # 401 -- invalid or expired API token, or it lacks the required permission
+rescue Broadcast::AuthorizationError   # 403 -- admin-only endpoint, or the user is sudo (read-only)
 rescue Broadcast::NotFoundError        # 404 -- resource does not exist
 rescue Broadcast::ConflictError        # 409 -- Idempotency-Key request still in flight
 rescue Broadcast::ValidationError      # 422 -- missing or invalid parameters
