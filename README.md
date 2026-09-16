@@ -979,6 +979,64 @@ admin_client.email_servers.copy_to_channel(99, target_channel_id: 7)
 
 ---
 
+## Users
+
+Manage installation users and their permissions. **Requires an admin/system API token** -- a regular per-channel token gets `Broadcast::AuthorizationError` ("Admin API token required for user management"). Sudo users are read-only through this API: `update`, `deactivate`, `activate`, `delete`, and any permission write against a sudo user raise `Broadcast::AuthorizationError`. Sudo access can never be granted through this resource.
+
+```ruby
+# List / search
+result = admin_client.users.list
+result = admin_client.users.list(q: 'ada', status: 'active', limit: 10, offset: 0)
+
+# Get a single user (includes system_permissions and channel_permissions)
+user = admin_client.users.get_user(3)
+
+# Create -- one of password: or send_password_reset: true is required
+admin_client.users.create(
+  email: 'ada@example.com',
+  first_name: 'Ada',
+  last_name: 'Lovelace',
+  send_password_reset: true
+)
+
+# Update -- pass only the fields you want to change
+admin_client.users.update(3, first_name: 'Grace')
+
+admin_client.users.deactivate(3)
+admin_client.users.activate(3)   # also clears lockout
+admin_client.users.delete(3)
+```
+
+### Channel Permissions
+
+`set_channel_permissions` is a `PUT` -- it **replaces the whole channel permission record**; any flag not named under `permissions:` becomes `false`. Pass exactly one of `permissions:`, `role:`, or `preset_id:`; passing zero or more than one raises `ArgumentError` before a request is sent.
+
+```ruby
+admin_client.users.channel_permissions(3)
+
+admin_client.users.set_channel_permissions(3, 7, permissions: { subscribers_read: true, broadcasts_write: true })
+admin_client.users.set_channel_permissions(3, 7, role: 'Editor')
+admin_client.users.set_channel_permissions(3, 7, preset_id: 12)
+
+admin_client.users.remove_channel_permissions(3, 7)
+
+# Apply the same permissions|role|preset_id to several channels at once.
+# Returns `applied` and `failed` (per-channel errors) rather than raising.
+admin_client.users.bulk_channel_permissions(3, broadcast_channel_ids: [7, 8], role: 'Viewer')
+```
+
+### System Permissions
+
+```ruby
+admin_client.users.system_permissions(3)
+
+# PATCH changes only the flags named -- others are left as-is. `sudo_access`
+# is never accepted; sending it is a 422.
+admin_client.users.update_system_permissions(3, user_management: true)
+```
+
+---
+
 ## Suppressions
 
 A suppressed address is one Broadcast will not email. Each channel has its own list, and the installation has a global one; `client.suppressions` manages the current channel's list:
@@ -1377,6 +1435,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Templates | `templates_read` -- list, get, channel brand kit (`channel.design`) | `templates_write` -- create, update, delete |
 | Opt-In Forms | `opt_in_forms_read` -- list, get, analytics | `opt_in_forms_write` -- create, update, delete, create_variant, duplicate |
 | Email Servers | `email_servers_read` -- list, get | `email_servers_write` -- create, update, delete, test_connection, copy_to_channel (admin) |
+| Users (admin token only) | `users_read` -- list, get, channel_permissions, system_permissions | `users_write` -- create, update, deactivate, activate, delete, permission writes |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
 | Autopilot | `autopilot_read` -- list, get, runs | `autopilot_write` -- create, update, delete, activate, pause, deactivate, trigger_run |
 | Suppressions | `suppressions_read` -- list, check | `suppressions_write` -- add, remove, bulk add/remove |

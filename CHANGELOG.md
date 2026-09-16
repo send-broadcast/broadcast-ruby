@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `Users` resource (`client.users`) for the admin-only Users API: `list`,
+  `get_user`, `create`, `update`, `deactivate`, `activate`, `delete`, plus
+  `channel_permissions`/`set_channel_permissions`/`remove_channel_permissions`/
+  `bulk_channel_permissions` and `system_permissions`/`update_system_permissions`.
+  Requires an admin API token — a channel token raises
+  `Broadcast::AuthorizationError`. Sudo users are read-only through this API
+  and sudo access can never be granted. `set_channel_permissions` and
+  `bulk_channel_permissions` accept exactly one of `permissions:`, `role:`,
+  or `preset_id:`, raising `ArgumentError` otherwise; the underlying `PUT` is
+  a full replace of the channel's permission record. `Connection` gained PUT
+  support to carry this call.
 - `Channel#design` (`client.channel.design`) for `GET /api/v1/channel/design`,
   which returns the token's channel brand kit, fully resolved: colours, font
   key and stack, layout, logo URL, website and social links. Read-only; needs

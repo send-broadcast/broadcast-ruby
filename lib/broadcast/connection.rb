@@ -118,6 +118,7 @@ module Broadcast
               when :get then Net::HTTP::Get
               when :post then Net::HTTP::Post
               when :patch then Net::HTTP::Patch
+              when :put then Net::HTTP::Put
               when :delete then Net::HTTP::Delete
               else raise ArgumentError, "Unsupported HTTP method: #{method}"
               end

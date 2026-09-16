@@ -119,6 +119,11 @@ module Broadcast
       @email_servers ||= Resources::EmailServers.new(self)
     end
 
+    # Installation users and their permissions. Requires an admin API token.
+    def users
+      @users ||= Resources::Users.new(self)
+    end
+
     def autopilots
       @autopilots ||= Resources::Autopilots.new(self)
     end
