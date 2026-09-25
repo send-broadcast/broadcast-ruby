@@ -1133,7 +1133,7 @@ secret = result['secret']
 # dropped server-side rather than rejected, so subscribe from these.
 Broadcast::Webhook::EVENT_TYPES        # all 32
 Broadcast::Webhook::EMAIL_EVENTS       # email.sent, email.delivered, ...
-Broadcast::Webhook::SUBSCRIBER_EVENTS  # subscriber.created, ...
+Broadcast::Webhook::SUBSCRIBER_EVENTS  # subscriber.created, ..., subscribers.purged
 Broadcast::Webhook::BROADCAST_EVENTS   # broadcast.sending, broadcast.sent, ...
 Broadcast::Webhook::SEQUENCE_EVENTS    # sequence.subscriber_added, ...
 Broadcast::Webhook::SYSTEM_EVENTS      # message.attempt.exhausted, test.webhook
@@ -1163,10 +1163,13 @@ result['data']  # => [{'id' => 1, 'event_type' => 'email.sent', 'response_status
 | Category | Events |
 |----------|--------|
 | Email | `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`, `email.failed` |
-| Subscriber | `subscriber.created`, `subscriber.updated`, `subscriber.deleted`, `subscriber.subscribed`, `subscriber.unsubscribed`, `subscriber.bounced`, `subscriber.complained` |
+| Subscriber | `subscriber.created`, `subscriber.updated`, `subscriber.deleted`, `subscriber.subscribed`, `subscriber.unsubscribed`, `subscriber.bounced`, `subscriber.complained`, `subscribers.purged`, `subscribers.purge_failed` |
 | Broadcast | `broadcast.scheduled`, `broadcast.queueing`, `broadcast.sending`, `broadcast.sent`, `broadcast.failed`, `broadcast.partial_failure`, `broadcast.aborted`, `broadcast.paused` |
 | Sequence | `sequence.subscriber_added`, `sequence.subscriber_completed`, `sequence.subscriber_moved`, `sequence.subscriber_removed`, `sequence.subscriber_paused`, `sequence.subscriber_resumed`, `sequence.subscriber_error` |
 | System | `message.attempt.exhausted`, `test.webhook` |
+
+A purge of a channel's whole list sends one `subscribers.purged` (or
+`subscribers.purge_failed`) instead of a `subscriber.deleted` per subscriber.
 
 ### Webhook Signature Verification
 

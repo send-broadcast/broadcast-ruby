@@ -15,10 +15,12 @@ module Broadcast
       email.bounced email.opened email.clicked email.failed
     ].freeze
 
+    # subscribers.* are sent once for a whole-list purge, in place of a
+    # subscriber.deleted per row.
     SUBSCRIBER_EVENTS = %w[
       subscriber.created subscriber.updated subscriber.deleted
       subscriber.subscribed subscriber.unsubscribed subscriber.bounced
-      subscriber.complained
+      subscriber.complained subscribers.purged subscribers.purge_failed
     ].freeze
 
     BROADCAST_EVENTS = %w[

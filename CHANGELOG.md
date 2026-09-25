@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- `subscribers.purged` and `subscribers.purge_failed` webhook event types, in
+  `Broadcast::Webhook::SUBSCRIBER_EVENTS` and `EVENT_TYPES` (now 34). A purge
+  of the whole list sends one of these instead of a `subscriber.deleted` per
+  subscriber.
 
 - `Users` resource (`client.users`) for the admin-only Users API: `list`,
   `get_user`, `create`, `update`, `deactivate`, `activate`, `delete`, plus

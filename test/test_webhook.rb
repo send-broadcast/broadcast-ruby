@@ -25,17 +25,25 @@ class TestWebhook < Minitest::Test
   end
 
   def test_event_type_count
-    assert_equal 32, Broadcast::Webhook::EVENT_TYPES.size
+    assert_equal 34, Broadcast::Webhook::EVENT_TYPES.size
+  end
+
+  # A purge of the whole list sends one of these instead of a subscriber.deleted
+  # per subscriber, so they sit with the subscriber events that a sync relies on.
+  def test_subscriber_events_include_the_purge_events
+    assert_includes Broadcast::Webhook::SUBSCRIBER_EVENTS, 'subscribers.purged'
+    assert_includes Broadcast::Webhook::SUBSCRIBER_EVENTS, 'subscribers.purge_failed'
   end
 
   def test_every_category_is_namespaced_consistently
     {
-      'email.' => Broadcast::Webhook::EMAIL_EVENTS,
-      'subscriber.' => Broadcast::Webhook::SUBSCRIBER_EVENTS,
-      'broadcast.' => Broadcast::Webhook::BROADCAST_EVENTS,
-      'sequence.' => Broadcast::Webhook::SEQUENCE_EVENTS
-    }.each do |prefix, events|
-      events.each { |event| assert event.start_with?(prefix), "#{event} should start with #{prefix}" }
+      %w[email.] => Broadcast::Webhook::EMAIL_EVENTS,
+      # subscribers.* are the whole-list events (a purge)
+      %w[subscriber. subscribers.] => Broadcast::Webhook::SUBSCRIBER_EVENTS,
+      %w[broadcast.] => Broadcast::Webhook::BROADCAST_EVENTS,
+      %w[sequence.] => Broadcast::Webhook::SEQUENCE_EVENTS
+    }.each do |prefixes, events|
+      events.each { |event| assert event.start_with?(*prefixes), "#{event} should start with #{prefixes.join(' or ')}" }
     end
   end
 
