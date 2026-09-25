@@ -330,7 +330,7 @@ Inbound webhooks — the app calling you.
 | HMAC-SHA256 verification (`v1,<base64>`) | ✅ `Webhook.verify` |
 | 5-minute timestamp tolerance | ✅ Replay protection |
 | Constant-time comparison | ✅ `OpenSSL.fixed_length_secure_compare` |
-| Event type constants | ✅ `Webhook::EVENT_TYPES` — 32 values |
+| Event type constants | ✅ `Webhook::EVENT_TYPES` — 34 values |
 
 Categories: `EMAIL_EVENTS` (8), `SUBSCRIBER_EVENTS` (7), `BROADCAST_EVENTS` (8),
 `SEQUENCE_EVENTS` (7), `SYSTEM_EVENTS` (2).

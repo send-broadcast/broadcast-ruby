@@ -25,7 +25,7 @@ response correctness — see
 
 Verified across languages beyond the per-repo suites:
 
-- All four declare the same **32 webhook event names**, byte-identical.
+- All four declare the same **34 webhook event names**, byte-identical.
 - All four declare the same **8 redacted credential fields** and **18 migration
   collections**.
 - Ruby, Node and Python compute an **identical HMAC signature** for the same
