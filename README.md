@@ -1380,9 +1380,13 @@ Available collections:
 ```
 channels  subscribers  templates  segments  sequences  email_servers
 opt_in_forms  broadcasts  outbound_receipts  webhook_endpoints  tokens
-suppressions  tags  users  link_redirects  link_clicks
-subscriber_histories  file_assets
+suppressions  unsubscribed_emails  tags  users  link_redirects
+link_clicks  subscriber_histories  file_assets
 ```
+
+`suppressions` is the global suppression list (GlobalSuppression rows, global
+or scoped to the channel). `unsubscribed_emails` is the channel's own
+suppression list. Export both to keep every suppressed address.
 
 File assets are downloaded separately and return raw bytes:
 

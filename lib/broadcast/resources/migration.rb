@@ -20,8 +20,8 @@ module Broadcast
       COLLECTIONS = %i[
         channels subscribers templates segments sequences email_servers
         opt_in_forms broadcasts outbound_receipts webhook_endpoints tokens
-        suppressions tags users link_redirects link_clicks subscriber_histories
-        file_assets
+        suppressions unsubscribed_emails tags users link_redirects link_clicks
+        subscriber_histories file_assets
       ].freeze
 
       COLLECTIONS.each do |collection|

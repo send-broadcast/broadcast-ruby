@@ -17,6 +17,7 @@ dynamic_operations:
   - GET /api/migration/v1/webhook_endpoints
   - GET /api/migration/v1/tokens
   - GET /api/migration/v1/suppressions
+  - GET /api/migration/v1/unsubscribed_emails
   - GET /api/migration/v1/tags
   - GET /api/migration/v1/users
   - GET /api/migration/v1/link_redirects

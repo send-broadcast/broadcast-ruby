@@ -67,6 +67,25 @@ class TestMigration < Minitest::Test
     assert_equal 'héllo', new_client.skill
   end
 
+  # The channel suppression list (UnsubscribedEmail), separate from
+  # /suppressions. Without it an export silently dropped the list.
+  def test_each_record_pages_through_unsubscribed_emails
+    stub_request(:get, "#{HOST}/api/migration/v1/unsubscribed_emails?broadcast_channel_id=1&limit=1&offset=0")
+      .to_return(status: 200, body: {
+        data: [{ id: 1, email: 'gone@example.com' }],
+        pagination: { total: 2, limit: 1, offset: 0, has_more: true }
+      }.to_json)
+    stub_request(:get, "#{HOST}/api/migration/v1/unsubscribed_emails?broadcast_channel_id=1&limit=1&offset=1")
+      .to_return(status: 200, body: {
+        data: [{ id: 2, email: 'left@example.com' }],
+        pagination: { total: 2, limit: 1, offset: 1, has_more: false }
+      }.to_json)
+
+    emails = @migration.each_record(:unsubscribed_emails, limit: 1, broadcast_channel_id: 1).map { |row| row['email'] }
+
+    assert_equal %w[gone@example.com left@example.com], emails
+  end
+
   # --- each_record ---
 
   def test_each_record_pages_until_exhausted

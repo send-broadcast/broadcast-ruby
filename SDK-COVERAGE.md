@@ -53,7 +53,7 @@ Two details worth knowing when reading the map below:
 - **PATCH is canonical.** Rails' `resources` routes `update` to both PATCH and
   PUT. They are one operation; the generator drops the PUT alias. Counting both
   would inflate the denominator by 8 and make this gem look 8 endpoints short.
-- **Metaprogrammed endpoints are declared.** The 18 migration collections are
+- **Metaprogrammed endpoints are declared.** The 19 migration collections are
   defined by `define_method` over `Migration::COLLECTIONS`, so no path literal
   exists to scan. They are listed in `.api-coverage.yml` and marked
   *(generated)* below. That file is produced from the gem's own constants — it
@@ -268,6 +268,7 @@ on the client and the gem attaches it.
 | GET | `/api/migration/v1/webhook_endpoints` | *(generated)* `Migration#webhook_endpoints` |
 | GET | `/api/migration/v1/tokens` | *(generated)* `Migration#tokens` |
 | GET | `/api/migration/v1/suppressions` | *(generated)* `Migration#suppressions` |
+| GET | `/api/migration/v1/unsubscribed_emails` | *(generated)* `Migration#unsubscribed_emails` |
 | GET | `/api/migration/v1/tags` | *(generated)* `Migration#tags` |
 | GET | `/api/migration/v1/users` | *(generated)* `Migration#users` |
 | GET | `/api/migration/v1/link_redirects` | *(generated)* `Migration#link_redirects` |
