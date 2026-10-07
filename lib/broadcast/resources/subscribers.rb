@@ -57,8 +57,12 @@ module Broadcast
         post('/api/v1/subscribers.json', payload)
       end
 
-      def update(email, **attrs)
-        patch('/api/v1/subscribers.json', { email: email, subscriber: attrs })
+      # custom_data_mode: 'replace' (the API default) stores custom_data as sent;
+      # 'merge' changes only the keys sent, and a nil value deletes that key.
+      def update(email, custom_data_mode: nil, **attrs)
+        body = { email: email, subscriber: attrs }
+        body[:custom_data_mode] = custom_data_mode if custom_data_mode
+        patch('/api/v1/subscribers.json', body)
       end
 
       def add_tags(email, tags)

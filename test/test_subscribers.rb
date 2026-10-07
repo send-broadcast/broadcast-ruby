@@ -55,6 +55,16 @@ class TestSubscribers < Minitest::Test
     @subs.update('jane@example.com', first_name: 'Janet')
   end
 
+  # custom_data_mode: "merge" changes only the keys sent; null deletes a key.
+  def test_update_with_custom_data_mode_merge
+    stub_request(:patch, "#{HOST}/api/v1/subscribers.json")
+      .with(body: hash_including('email' => 'jane@example.com', 'custom_data_mode' => 'merge',
+                                 'subscriber' => hash_including('custom_data' => { 'sub_offers' => false })))
+      .to_return(status: 200, body: { email: 'jane@example.com' }.to_json)
+
+    @subs.update('jane@example.com', custom_data: { sub_offers: false }, custom_data_mode: 'merge')
+  end
+
   def test_add_tags
     stub_request(:post, "#{HOST}/api/v1/subscribers/add_tag.json")
       .with(body: hash_including('email' => 'jane@example.com', 'tags' => ['vip']))

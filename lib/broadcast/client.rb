@@ -99,6 +99,10 @@ module Broadcast
       @segments ||= Resources::Segments.new(self)
     end
 
+    def topics
+      @topics ||= Resources::Topics.new(self)
+    end
+
     def templates
       @templates ||= Resources::Templates.new(self)
     end

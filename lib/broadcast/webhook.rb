@@ -18,7 +18,7 @@ module Broadcast
     # subscribers.* are sent once for a whole-list purge, in place of a
     # subscriber.deleted per row.
     SUBSCRIBER_EVENTS = %w[
-      subscriber.created subscriber.updated subscriber.deleted
+      subscriber.created subscriber.updated subscriber.preferences_updated subscriber.deleted
       subscriber.subscribed subscriber.unsubscribed subscriber.bounced
       subscriber.complained subscribers.purged subscribers.purge_failed
     ].freeze

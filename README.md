@@ -712,6 +712,38 @@ client.broadcasts.statistics_links(1, sort: 'clicks', order: 'desc')
 
 ---
 
+## Topics
+
+A topic is one kind of email subscribers opt in to or out of (webinars, offers).
+Its value lives in a top-level `custom_data` key (`true`, `false`, or no value)
+or in a tag. `unset_receives` decides, at send time, whether a subscriber with no
+value receives it; Broadcast never writes a default. A broadcast or sequence with
+a `topic_id` reaches only the topic's receivers: (segments) AND topic.
+
+**Required permissions:** `subscribers_read`, `subscribers_write`
+
+```ruby
+client.topics.list['data']  # => [{'id' => 1, 'name' => 'Webinars', 'custom_data_key' => 'sub_webinars', ...}]
+client.topics.get_topic(1)
+
+topic = client.topics.create(name: 'Webinars', custom_data_key: 'sub_webinars')
+client.topics.create(name: 'News', storage: 'tag', tag_name: 'news')
+client.topics.update(topic['id'], unset_receives: false)
+client.topics.delete(topic['id'])  # 422 while a broadcast or sequence uses it
+
+# Send to a topic
+client.broadcasts.create(subject: 'Webinar', body: '...', segment_ids: [2], topic_id: topic['id'])
+
+# Change only the keys you send (nil deletes a key); the default replaces custom_data
+client.subscribers.update('jane@example.com', custom_data: { sub_webinars: false }, custom_data_mode: 'merge')
+```
+
+The subscriber JSON has `topics`: each topic's stored value (`true`, `false`, or
+`nil`). Topic changes fire `subscriber.preferences_updated` (from/to per topic,
+`changed_at`, `change_source`) as well as `subscriber.updated`.
+
+---
+
 ## Segments
 
 Define subscriber groups using rules for targeted broadcasts and sequence enrollment.

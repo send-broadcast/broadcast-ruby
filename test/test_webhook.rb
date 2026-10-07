@@ -25,7 +25,8 @@ class TestWebhook < Minitest::Test
   end
 
   def test_event_type_count
-    assert_equal 34, Broadcast::Webhook::EVENT_TYPES.size
+    assert_equal 35, Broadcast::Webhook::EVENT_TYPES.size
+    assert_includes Broadcast::Webhook::SUBSCRIBER_EVENTS, 'subscriber.preferences_updated'
   end
 
   # A purge of the whole list sends one of these instead of a subscriber.deleted
