@@ -50,6 +50,34 @@ class TestOptInForms < Minitest::Test
     @forms.update(5, enabled: false)
   end
 
+  def test_trigger_frequencies
+    assert_equal %w[always every_visit once_per_session once_per_day once_per_week once],
+                 Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES
+    assert_predicate Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES, :frozen?
+  end
+
+  # The server decides which frequency words it accepts; the client sends what it
+  # is given, so an older server is never refused something it would take.
+  def test_update_sends_trigger_settings_verbatim
+    stub_request(:patch, "#{HOST}/api/v1/opt_in_forms/5")
+      .with(body: { opt_in_form: { trigger_settings: { frequency: 'weekly' } } }.to_json)
+      .to_return(status: 200, body: { id: 5 }.to_json)
+
+    @forms.update(5, trigger_settings: { frequency: 'weekly' })
+  end
+
+  def test_update_with_unknown_frequency_raises_validation_error
+    message = 'Trigger settings frequency "weekly" is not known. ' \
+              'Use one of: always, every_visit, once_per_session, once_per_day, once_per_week, once'
+    stub_request(:patch, "#{HOST}/api/v1/opt_in_forms/5")
+      .to_return(status: 422, body: { error: message }.to_json)
+
+    error = assert_raises(Broadcast::ValidationError) do
+      @forms.update(5, trigger_settings: { frequency: 'weekly' })
+    end
+    assert_includes error.message, '"weekly" is not known'
+  end
+
   def test_delete
     stub_request(:delete, "#{HOST}/api/v1/opt_in_forms/5")
       .to_return(status: 200, body: { message: 'Opt-in form deleted successfully' }.to_json)

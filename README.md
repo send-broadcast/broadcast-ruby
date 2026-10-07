@@ -889,6 +889,11 @@ result = client.opt_in_forms.create(
 # Update (deeply nested settings hashes pass through verbatim)
 client.opt_in_forms.update(1, enabled: false)
 
+# How often the same visitor sees a popup. Any word outside
+# Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES raises
+# Broadcast::ValidationError (422).
+client.opt_in_forms.update(1, trigger_settings: { frequency: 'once_per_day' })
+
 # Delete
 client.opt_in_forms.delete(1)
 ```

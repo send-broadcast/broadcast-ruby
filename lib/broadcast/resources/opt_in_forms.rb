@@ -5,6 +5,12 @@ require 'date'
 module Broadcast
   module Resources
     class OptInForms < Base
+      # The words trigger_settings[:frequency] accepts: how often the same visitor
+      # sees a popup. always and every_visit mean the same. The server refuses any
+      # other word with 422 (Broadcast::ValidationError); the client does not
+      # check, so an older server is never refused a word it would take.
+      TRIGGER_FREQUENCIES = %w[always every_visit once_per_session once_per_day once_per_week once].freeze
+
       # List opt-in forms.
       #
       # NOTE: returns up to 250 results per page along with `pagination`
@@ -36,6 +42,10 @@ module Broadcast
       #
       # Custom fields declared in opt_in_form_blocks_attributes support a
       # multi-line variant, which renders as a textarea on the hosted form.
+      #
+      # trigger_settings: { frequency: } must be one of TRIGGER_FREQUENCIES;
+      # any other word raises Broadcast::ValidationError (422). Keys sent in a
+      # settings hash are merged into the stored settings.
       def create(**attrs)
         post('/api/v1/opt_in_forms', { opt_in_form: attrs })
       end
