@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `excluded_segment_ids` on broadcasts, sequences and autopilots (create,
+  update, and in the returned record): segments a send never reaches. The
+  server refuses a segment that is both sent to and excluded with 422.
+- `subscribers.create(unsubscribed_at: ...)`: creates a subscriber who has
+  already unsubscribed, in one request, with any token. Before, the server
+  ignored the field and a migration had to create, then unsubscribe.
+
 - `Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES`: the words
   `trigger_settings[:frequency]` accepts (`always`, `every_visit`,
   `once_per_session`, `once_per_day`, `once_per_week`, `once`).

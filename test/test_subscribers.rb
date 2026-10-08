@@ -46,6 +46,15 @@ class TestSubscribers < Minitest::Test
     @subs.create(email: 'new@example.com', first_name: 'Jane', tags: ['free'])
   end
 
+  def test_create_passes_unsubscribed_at_inside_subscriber
+    stub_request(:post, "#{HOST}/api/v1/subscribers.json")
+      .with(body: hash_including('subscriber' => hash_including('email' => 'gone@example.com',
+                                                                'unsubscribed_at' => '2025-03-14T09:30:00Z')))
+      .to_return(status: 201, body: { id: '124' }.to_json)
+
+    @subs.create(email: 'gone@example.com', unsubscribed_at: '2025-03-14T09:30:00Z')
+  end
+
   def test_update
     stub_request(:patch, "#{HOST}/api/v1/subscribers.json")
       .with(body: hash_including('email' => 'jane@example.com',

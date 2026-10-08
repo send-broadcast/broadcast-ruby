@@ -30,6 +30,7 @@ module Broadcast
       #   copies_to_generate:    how many drafts each run produces
       #   tone_description:, content_instructions:, newsletter_structure:
       #   segment_ids:           array — restrict the newsletter's audience
+      #   excluded_segment_ids:  array — segments its drafts never reach
       def create(**attrs)
         post('/api/v1/autopilots', { autopilot: attrs })
       end

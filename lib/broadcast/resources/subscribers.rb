@@ -45,7 +45,13 @@ module Broadcast
       #                                another provider. Ignored (with a warning) on update,
       #                                and ignored entirely for channel-scoped tokens.
       #
-      # Note `unsubscribed_at` is never settable here — use `unsubscribe(email)`.
+      # Any token, create only:
+      #   unsubscribed_at:             ISO 8601. Stores the subscriber as unsubscribed in the
+      #                                same request (inactive, on the unsubscribe list), for
+      #                                migrating a list with its opt-outs intact. No
+      #                                confirmation email; 422 if it is in the future or sent
+      #                                with is_active: true. To unsubscribe an existing
+      #                                subscriber, use `unsubscribe(email)`.
       def create(**attrs)
         double_opt_in = attrs.delete(:double_opt_in)
         confirmation_template_id = attrs.delete(:confirmation_template_id)

@@ -31,6 +31,14 @@ class TestBroadcasts < Minitest::Test
     assert_equal 5, result['id']
   end
 
+  def test_create_passes_excluded_segment_ids
+    stub_request(:post, "#{HOST}/api/v1/broadcasts")
+      .with(body: hash_including('excluded_segment_ids' => [7]))
+      .to_return(status: 201, body: { id: 6 }.to_json)
+
+    @bcast.create(subject: 'Offer', body: '<p>Hi</p>', excluded_segment_ids: [7])
+  end
+
   def test_update
     stub_request(:patch, "#{HOST}/api/v1/broadcasts/1")
       .to_return(status: 200, body: { id: 1 }.to_json)

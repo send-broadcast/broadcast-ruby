@@ -734,6 +734,12 @@ client.topics.delete(topic['id'])  # 422 while a broadcast or sequence uses it
 # Send to a topic
 client.broadcasts.create(subject: 'Webinar', body: '...', segment_ids: [2], topic_id: topic['id'])
 
+# Send to everyone except a segment (also on sequences and autopilots)
+client.broadcasts.create(subject: 'Offer', body: '...', excluded_segment_ids: [competitors['id']])
+
+# Migrate someone who already unsubscribed, in one request
+client.subscribers.create(email: 'opted-out@example.com', unsubscribed_at: '2025-03-14T09:30:00Z')
+
 # Change only the keys you send (nil deletes a key); the default replaces custom_data
 client.subscribers.update('jane@example.com', custom_data: { sub_webinars: false }, custom_data_mode: 'merge')
 ```
