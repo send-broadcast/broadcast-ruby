@@ -1174,7 +1174,7 @@ secret = result['secret']
 
 # Every valid event type is available as a constant. An unknown event type is
 # dropped server-side rather than rejected, so subscribe from these.
-Broadcast::Webhook::EVENT_TYPES        # all 35
+Broadcast::Webhook::EVENT_TYPES        # all 37
 Broadcast::Webhook::EMAIL_EVENTS       # email.sent, email.delivered, ...
 Broadcast::Webhook::SUBSCRIBER_EVENTS  # subscriber.created, ..., subscribers.purged
 Broadcast::Webhook::BROADCAST_EVENTS   # broadcast.sending, broadcast.sent, ...
