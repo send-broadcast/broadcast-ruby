@@ -1205,9 +1205,9 @@ result['data']  # => [{'id' => 1, 'event_type' => 'email.sent', 'response_status
 
 | Category | Events |
 |----------|--------|
-| Email | `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`, `email.failed` |
+| Email | `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.send_delayed`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`, `email.failed` |
 | Subscriber | `subscriber.created`, `subscriber.updated`, `subscriber.deleted`, `subscriber.subscribed`, `subscriber.unsubscribed`, `subscriber.bounced`, `subscriber.complained`, `subscribers.purged`, `subscribers.purge_failed` |
-| Broadcast | `broadcast.scheduled`, `broadcast.queueing`, `broadcast.sending`, `broadcast.sent`, `broadcast.failed`, `broadcast.partial_failure`, `broadcast.aborted`, `broadcast.paused` |
+| Broadcast | `broadcast.scheduled`, `broadcast.queueing`, `broadcast.sending`, `broadcast.sent`, `broadcast.failed`, `broadcast.partial_failure`, `broadcast.aborted`, `broadcast.paused`, `broadcast.batch_completed` |
 | Sequence | `sequence.subscriber_added`, `sequence.subscriber_completed`, `sequence.subscriber_moved`, `sequence.subscriber_removed`, `sequence.subscriber_paused`, `sequence.subscriber_resumed`, `sequence.subscriber_error` |
 | System | `message.attempt.exhausted`, `test.webhook` |
 

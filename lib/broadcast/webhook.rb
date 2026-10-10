@@ -10,9 +10,12 @@ module Broadcast
     # Every event type a webhook endpoint can subscribe to, mirroring
     # WebhookEndpoint::AVAILABLE_EVENT_TYPES server-side. Use these when
     # creating an endpoint — an unknown event type is dropped silently.
+    # email.send_delayed: a transactional email is waiting for room under its
+    # server's hourly limit (not yet sent). email.delivery_delayed: the
+    # provider accepted it and the recipient's server is delaying it.
     EMAIL_EVENTS = %w[
-      email.sent email.delivered email.delivery_delayed email.complained
-      email.bounced email.opened email.clicked email.failed
+      email.sent email.delivered email.delivery_delayed email.send_delayed
+      email.complained email.bounced email.opened email.clicked email.failed
     ].freeze
 
     # subscribers.* are sent once for a whole-list purge, in place of a
@@ -26,7 +29,7 @@ module Broadcast
     BROADCAST_EVENTS = %w[
       broadcast.scheduled broadcast.queueing broadcast.sending broadcast.sent
       broadcast.failed broadcast.partial_failure broadcast.aborted
-      broadcast.paused
+      broadcast.paused broadcast.batch_completed
     ].freeze
 
     SEQUENCE_EVENTS = %w[

@@ -25,7 +25,9 @@ class TestWebhook < Minitest::Test
   end
 
   def test_event_type_count
-    assert_equal 35, Broadcast::Webhook::EVENT_TYPES.size
+    assert_equal 37, Broadcast::Webhook::EVENT_TYPES.size
+    assert_includes Broadcast::Webhook::EMAIL_EVENTS, 'email.send_delayed'
+    assert_includes Broadcast::Webhook::BROADCAST_EVENTS, 'broadcast.batch_completed'
     assert_includes Broadcast::Webhook::SUBSCRIBER_EVENTS, 'subscriber.preferences_updated'
   end
 
