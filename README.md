@@ -839,9 +839,10 @@ client.templates.delete(1)
 
 ### Brand Kit
 
-Read the channel's brand kit (Settings → Design) so your own templates can
-match it. Read-only, fully resolved (defaults filled in), and always the
-token's own channel, so it takes no arguments. Needs `templates_read`.
+Read the channel's brand kit (Settings → Brand Kit) so your own templates can
+match it. Fully resolved (defaults filled in), and always the token's own
+channel, so it takes no arguments. Needs `templates_read` (or, from Broadcast
+2.46.0, `channel_settings_read`).
 
 ```ruby
 design = client.channel.design
@@ -853,6 +854,53 @@ design['brand']['logo_url']          # => public URL, or nil when no logo is set
 design['brand']['website_url']       # => 'https://acme.example'
 design['brand']['social_links']      # => [{ 'network' => 'x', 'url' => 'https://x.com/acme' }]
 ```
+
+Change it with `update_design` (Broadcast 2.46.0 or later, needs
+`channel_settings_write`). Send only what changes, in the same shape. An
+empty string or `nil` puts a value back to its default, and `social_links`
+replaces the list. `font_stack` and `width` are read-only. The logo is the
+`logo_url` of an image in the channel's file library; the server never
+fetches a URL.
+
+```ruby
+kit = client.channel.update_design(
+  colors: { accent: '#ff5500' },
+  typography: { font: 'georgia' },
+  brand: { logo_url: 'https://your-broadcast.example/files/eyJ...-logo.png', logo_width: 200 }
+)
+kit['colors']['accent']   # => '#ff5500' (the whole kit comes back)
+kit.warnings              # => e.g. an unrecognized key you sent
+```
+
+An unknown font, icon style or social network, a logo from outside the file
+library, or a value the Brand Kit page would refuse raises
+`Broadcast::ValidationError` (422), and nothing is saved.
+
+### Channel Settings
+
+Read and change the channel's settings (Broadcast 2.46.0 or later), grouped
+like the Settings pages: `general`, `sender`, `unsubscribe_page` (including
+the privacy policy and legal notice links) and `confirmation_page`. Needs
+`channel_settings_read` to read and `channel_settings_write` to change; both
+are off on every token until you tick them.
+
+```ruby
+settings = client.channel.settings
+settings['unsubscribe_page']['legal_notice_url']   # => 'https://example.com/impressum'
+
+result = client.channel.update_settings(
+  unsubscribe_page: {
+    privacy_policy_url: 'https://example.com/privacy',
+    legal_notice_url: 'https://example.com/impressum'
+  }
+)
+result.warnings   # => e.g. [#<Warning code="unrecognized_parameter" param="channel_settings.general.domain" ...>]
+```
+
+Updates are partial: nested text and colours merge, an empty string or `nil`
+removes a value, and `languages` replaces the list. A value outside a fixed
+set, or one that fails validation, raises `Broadcast::ValidationError` and
+saves nothing.
 
 ---
 
@@ -1488,6 +1536,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Users (admin token only) | `users_read` -- list, get, channel_permissions, system_permissions | `users_write` -- create, update, deactivate, activate, delete, permission writes |
 | Webhook Endpoints | `webhook_endpoints_read` -- list, get, deliveries | `webhook_endpoints_write` -- create, update, delete, test |
 | Autopilot | `autopilot_read` -- list, get, runs | `autopilot_write` -- create, update, delete, activate, pause, deactivate, trigger_run |
+| Channel Settings | `channel_settings_read` -- `channel.settings`, `channel.design` | `channel_settings_write` -- `channel.update_settings`, `channel.update_design` |
 | Suppressions | `suppressions_read` -- list, check | `suppressions_write` -- add, remove, bulk add/remove |
 
 ---
