@@ -880,9 +880,14 @@ library, or a value the Brand Kit page would refuse raises
 
 Read and change the channel's settings (Broadcast 2.46.0 or later), grouped
 like the Settings pages: `general`, `sender`, `unsubscribe_page` (including
-the privacy policy and legal notice links) and `confirmation_page`. Needs
-`channel_settings_read` to read and `channel_settings_write` to change; both
-are off on every token until you tick them.
+the privacy policy and legal notice links), `confirmation_page` and
+`opt_in_forms` (`match_brand_kit`: whether new opt-in forms start from the
+brand kit). Needs `channel_settings_read` to read and `channel_settings_write`
+to change; both are off on every token until you tick them.
+
+The `match_brand_kit` switches (`unsubscribe_page`, `confirmation_page`
+and `opt_in_forms`) decide where the brand kit is used. They are set
+here, not with the brand kit update.
 
 ```ruby
 settings = client.channel.settings

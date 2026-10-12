@@ -34,7 +34,9 @@ module Broadcast
 
       # The channel's settings (Broadcast 2.46.0 or later), grouped like the
       # Settings pages: `general`, `sender`, `unsubscribe_page` (with the legal
-      # links) and `confirmation_page`. Requires `channel_settings_read`.
+      # links), `confirmation_page` and `opt_in_forms` (`match_brand_kit`, whether
+      # new opt-in forms start from the brand kit). The brand kit switches are
+      # set here, not with #update_design. Requires `channel_settings_read`.
       def settings
         get('/api/v1/channel/settings')
       end

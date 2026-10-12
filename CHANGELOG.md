@@ -8,8 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - `channel.settings` and `channel.update_settings(**groups)` for
   `GET`/`PATCH /api/v1/channel/settings` (Broadcast 2.46.0): general, sender,
-  unsubscribe page (with the privacy policy and legal notice links) and
-  confirmation page settings. Needs the new `channel_settings` permissions.
+  unsubscribe page (with the privacy policy and legal notice links),
+  confirmation page and opt-in forms (`opt_in_forms.match_brand_kit`) settings. Needs the new `channel_settings` permissions.
 - `channel.update_design(**kit)` for `PATCH /api/v1/channel/design`
   (Broadcast 2.46.0): change the brand kit. Needs `channel_settings_write`.
   The logo is the `logo_url` of an image in the channel's file library.
