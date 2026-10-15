@@ -909,6 +909,39 @@ saves nothing.
 
 ---
 
+## File Assets
+
+The channel's file library (Broadcast 2.48.0 or later): PNG, JPEG and GIF
+images under 10 MB, each with a public URL that never expires. Use the URL in
+emails, or as the brand kit logo. Needs `file_assets_read` to list and get,
+and `file_assets_write` to upload and delete.
+
+```ruby
+# Upload from a path (multipart). The content type follows the extension.
+file = client.file_assets.upload('logo.png')
+file['url']   # => 'https://your-broadcast.example/files/eyJ...-logo.png'
+
+# From an IO, with a filename; link it to this channel only; safe to retry
+client.file_assets.upload(io, filename: 'banner.gif', channel_restricted: true,
+                              idempotency_key: "banner-#{campaign.id}")
+
+# Already have base64? Send it as JSON.
+client.file_assets.upload_base64(filename: 'logo.png', content_type: 'image/png',
+                                 data: Base64.strict_encode64(bytes))
+
+# Use it as the brand kit logo
+client.channel.update_design(brand: { logo_url: file['url'] })
+
+client.file_assets.list(filter: 'logo', limit: 20)   # => { 'data' => [...], 'total' => n }
+client.file_assets.get_file_asset(file['id'])
+client.file_assets.delete(file['id'])
+```
+
+A file that is not a PNG, JPEG or GIF, a file of 10 MB or more, or invalid
+base64 raises `Broadcast::ValidationError` (422). So does deleting a file
+that is a channel's brand kit logo: set another logo first. The server never
+fetches a URL; upload the bytes.
+
 ## Opt-In Forms
 
 Embeddable subscription forms with theming, A/B variants, and analytics.
@@ -1543,6 +1576,7 @@ Each token can be scoped to specific resources. The ActionMailer delivery method
 | Autopilot | `autopilot_read` -- list, get, runs | `autopilot_write` -- create, update, delete, activate, pause, deactivate, trigger_run |
 | Channel Settings | `channel_settings_read` -- `channel.settings`, `channel.design` | `channel_settings_write` -- `channel.update_settings`, `channel.update_design` |
 | Suppressions | `suppressions_read` -- list, check | `suppressions_write` -- add, remove, bulk add/remove |
+| File Assets | `file_assets_read` -- list, get | `file_assets_write` -- upload, upload_base64, delete |
 
 ---
 

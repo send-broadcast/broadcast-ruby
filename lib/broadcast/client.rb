@@ -153,6 +153,11 @@ module Broadcast
       @channel ||= Resources::Channel.new(self)
     end
 
+    # The channel's file library: upload images and get their public URLs.
+    def file_assets
+      @file_assets ||= Resources::FileAssets.new(self)
+    end
+
     # Read-only export endpoints under /api/migration/v1. Requires an admin
     # (system) API token.
     def migration
@@ -160,9 +165,11 @@ module Broadcast
     end
 
     # @api private
-    def request(method, path, body_or_params = nil, headers: {}, raw: false)
+    # rubocop:disable Metrics/ParameterLists -- transport options passed straight through to Connection
+    def request(method, path, body_or_params = nil, headers: {}, raw: false, multipart: false)
+      # rubocop:enable Metrics/ParameterLists
       payload = inject_channel_scope(body_or_params)
-      @connection.request(method, path, payload, headers: headers, raw: raw)
+      @connection.request(method, path, payload, headers: headers, raw: raw, multipart: multipart)
     end
 
     private

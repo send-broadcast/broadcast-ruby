@@ -17,6 +17,9 @@ module Broadcast
       api_key api_token password secret
     ].freeze
 
+    # Longer strings are cut short in the log.
+    MAX_LOGGED_STRING = 1000
+
     def initialize(config)
       @config = config
     end
@@ -56,6 +59,12 @@ module Broadcast
         end
       when Array
         value.map { |item| redact(item) }
+      when FilePart
+        value.inspect
+      when String
+        # A base64 file upload (file_assets.upload_base64) would otherwise
+        # write megabytes into the log.
+        value.length > MAX_LOGGED_STRING ? "#{value[0, 40]}... (#{value.length} characters)" : value
       else
         value
       end

@@ -28,9 +28,13 @@ module Broadcast
 
     # @param raw [Boolean] return the response body as a String instead of
     #   parsing it as JSON — for text/plain endpoints such as /api/v1/skill.
-    def request(method, path, payload = nil, headers: {}, raw: false)
+    # @param multipart [Boolean] send the payload as multipart/form-data
+    #   (Broadcast::FilePart values become file parts) instead of JSON.
+    # rubocop:disable Metrics/ParameterLists -- one keyword per transport option
+    def request(method, path, payload = nil, headers: {}, raw: false, multipart: false)
+      # rubocop:enable Metrics/ParameterLists
       uri = build_uri(path, method, payload)
-      context = { headers: headers, raw: raw, redirects: 0 }
+      context = { headers: headers, raw: raw, redirects: 0, multipart: multipart }
 
       retry_with_backoff { execute(method, uri, payload, context) }
     rescue Net::OpenTimeout, Net::ReadTimeout => e
@@ -52,7 +56,11 @@ module Broadcast
       http.read_timeout = @config.timeout
 
       req = build_request(method, uri, context[:headers])
-      req.body = payload.to_json if method != :get && payload_present?(payload)
+      if context[:multipart]
+        req.body, req['Content-Type'] = Multipart.build(payload || {})
+      elsif method != :get && payload_present?(payload)
+        req.body = payload.to_json
+      end
 
       @debug_logger.request(req, method == :get ? nil : payload)
       response = http.request(req)

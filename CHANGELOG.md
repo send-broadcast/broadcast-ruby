@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `file_assets` for the File Assets API (Broadcast 2.48.0): `list(filter:,
+  limit:, offset:)`, `get_file_asset(id)`, `upload(path_or_io, filename:,
+  content_type:, channel_restricted:, idempotency_key:)` (multipart),
+  `upload_base64(filename:, data:, ...)` (JSON) and `delete(id)`. The returned
+  `url` is what `channel.update_design(brand: { logo_url: })` takes. Needs the
+  new `file_assets` permissions.
+- Multipart request support in the HTTP layer (`Broadcast::FilePart`). The
+  debug log shows a file part as its name and size, and cuts strings over
+  1,000 characters short, so an upload never writes the file into the log.
 - `channel.settings` and `channel.update_settings(**groups)` for
   `GET`/`PATCH /api/v1/channel/settings` (Broadcast 2.46.0): general, sender,
   unsubscribe page (with the privacy policy and legal notice links),
