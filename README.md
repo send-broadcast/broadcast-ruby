@@ -986,6 +986,10 @@ client.opt_in_forms.update(1, enabled: false)
 # Broadcast::ValidationError (422).
 client.opt_in_forms.update(1, trigger_settings: { frequency: 'once_per_day' })
 
+# Every N days (Broadcast 2.49 and later): frequency_cookie_days is a whole
+# number, 1 or more; blank means 30.
+client.opt_in_forms.update(1, trigger_settings: { frequency: 'once_per_days', frequency_cookie_days: 7 })
+
 # Delete
 client.opt_in_forms.delete(1)
 ```

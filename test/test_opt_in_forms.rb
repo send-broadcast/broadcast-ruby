@@ -51,7 +51,7 @@ class TestOptInForms < Minitest::Test
   end
 
   def test_trigger_frequencies
-    assert_equal %w[always every_visit once_per_session once_per_day once_per_week once],
+    assert_equal %w[always every_visit once_per_session once_per_day once_per_week once once_per_days],
                  Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES
     assert_predicate Broadcast::Resources::OptInForms::TRIGGER_FREQUENCIES, :frozen?
   end
