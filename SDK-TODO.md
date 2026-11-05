@@ -26,8 +26,7 @@ response correctness — see
 Verified across languages beyond the per-repo suites:
 
 - All four declare the same **37 webhook event names**, byte-identical.
-- All four declare the same **8 redacted credential fields** and **18 migration
-  collections**.
+- All four declare the same **8 redacted credential fields**.
 - Ruby, Node and Python compute an **identical HMAC signature** for the same
   payload/timestamp/secret. PHP was not checked — no interpreter available.
 
@@ -186,7 +185,6 @@ nothing measures the transport contract but these tests.
 | Webhook endpoints | CRUD, test, deliveries |
 | Transactionals | create (template, double opt-in, idempotency), show |
 | Discovery | whoami, status, prime, skill |
-| Migration | 19 read-only export endpoints under `/api/migration/v1` |
 
 ### Webhooks (inbound)
 

@@ -53,11 +53,6 @@ Two details worth knowing when reading the map below:
 - **PATCH is canonical.** Rails' `resources` routes `update` to both PATCH and
   PUT. They are one operation; the generator drops the PUT alias. Counting both
   would inflate the denominator by 8 and make this gem look 8 endpoints short.
-- **Metaprogrammed endpoints are declared.** The 19 migration collections are
-  defined by `define_method` over `Migration::COLLECTIONS`, so no path literal
-  exists to scan. They are listed in `.api-coverage.yml` and marked
-  *(generated)* below. That file is produced from the gem's own constants — it
-  is not a hand-written promise.
 
 ---
 
@@ -247,39 +242,6 @@ payload so a fetch-modify-save cannot destroy the stored credential.
 naming the missing prerequisites. `trigger_run` returns 202 — generation is
 asynchronous, so poll `runs`.
 
-### Migration / export — 20/20
-
-Admin tokens only. `broadcast_channel_id` is required on every call; set it once
-on the client and the gem attaches it.
-
-| Method | Path | Gem |
-|---|---|---|
-| GET | `/api/migration/v1/manifest` | `Migration#manifest` |
-| GET | `/api/migration/v1/file_assets/{id}/download` | `Migration#download_file_asset` — raw bytes |
-| GET | `/api/migration/v1/channels` | *(generated)* `Migration#channels` |
-| GET | `/api/migration/v1/subscribers` | *(generated)* `Migration#subscribers` |
-| GET | `/api/migration/v1/templates` | *(generated)* `Migration#templates` |
-| GET | `/api/migration/v1/segments` | *(generated)* `Migration#segments` |
-| GET | `/api/migration/v1/sequences` | *(generated)* `Migration#sequences` |
-| GET | `/api/migration/v1/email_servers` | *(generated)* `Migration#email_servers` |
-| GET | `/api/migration/v1/opt_in_forms` | *(generated)* `Migration#opt_in_forms` |
-| GET | `/api/migration/v1/broadcasts` | *(generated)* `Migration#broadcasts` |
-| GET | `/api/migration/v1/outbound_receipts` | *(generated)* `Migration#outbound_receipts` |
-| GET | `/api/migration/v1/webhook_endpoints` | *(generated)* `Migration#webhook_endpoints` |
-| GET | `/api/migration/v1/tokens` | *(generated)* `Migration#tokens` |
-| GET | `/api/migration/v1/suppressions` | *(generated)* `Migration#suppressions` |
-| GET | `/api/migration/v1/unsubscribed_emails` | *(generated)* `Migration#unsubscribed_emails` |
-| GET | `/api/migration/v1/tags` | *(generated)* `Migration#tags` |
-| GET | `/api/migration/v1/users` | *(generated)* `Migration#users` |
-| GET | `/api/migration/v1/link_redirects` | *(generated)* `Migration#link_redirects` |
-| GET | `/api/migration/v1/link_clicks` | *(generated)* `Migration#link_clicks` |
-| GET | `/api/migration/v1/subscriber_histories` | *(generated)* `Migration#subscriber_histories` |
-| GET | `/api/migration/v1/file_assets` | *(generated)* `Migration#file_assets` |
-
-`Migration#each_record(:collection)` pages any of them automatically, advancing
-by the page size the **server granted** rather than the one requested (the
-server clamps `limit` to 250).
-
 ---
 
 ## Transport coverage
@@ -301,10 +263,10 @@ complete while quietly losing information.
 | Retry on 5xx and timeout | ✅ | `retry_attempts`, `retry_delay` |
 | Typed errors | ✅ | 401/403/404/409/422/429/5xx each distinct |
 | Redirect handling | ✅ | Same-host GET follows; writes and cross-host refuse |
-| Raw/text responses | ✅ | `client.skill`, `download_file_asset` |
+| Raw/text responses | ✅ | `client.skill` |
 | Channel scoping | ✅ | `broadcast_channel_id:`, `with_channel(id) { }` |
 | Debug logging | ✅ | Credentials redacted |
-| Pagination helper | ⚠️ Migration only | `each_record`; v1 endpoints page manually |
+| Pagination helper | ❌ | v1 endpoints page manually |
 | ActionMailer integration | ✅ | `:broadcast` delivery method + Railtie |
 
 Error mapping in full:
@@ -355,9 +317,9 @@ this is an API gap, not a gem gap, and nothing here is actionable in this repo.
 | **Channel management** | Web UI | Creating channels, domain/sender setup, onboarding |
 | **User & permission management** | Web UI | Users, system permissions, per-channel permissions |
 | **Settings** | Web UI | General, AI, DNS checks, ESP integrations, sender details |
-| **Global suppressions** | Web UI + migration export | Read-only via `migration.suppressions`; no v1 CRUD |
-| **File assets** | Web UI + migration export | Read-only via migration; no v1 upload |
-| **Link tracking config** | Web UI | Click data readable via `statistics_links` and migration |
+| **Global suppressions** | Web UI | No v1 CRUD |
+| **File assets** | Web UI | No v1 upload |
+| **Link tracking config** | Web UI | Click data readable via `statistics_links` |
 | **Admin / platform** | Web UI | Admin API tokens, SaaS platform admin |
 | **Confirmation templates & pages** | Partly API | Configurable as template attributes; no dedicated endpoints |
 

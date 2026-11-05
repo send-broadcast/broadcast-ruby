@@ -158,12 +158,6 @@ module Broadcast
       @file_assets ||= Resources::FileAssets.new(self)
     end
 
-    # Read-only export endpoints under /api/migration/v1. Requires an admin
-    # (system) API token.
-    def migration
-      @migration ||= Resources::Migration.new(self)
-    end
-
     # @api private
     # rubocop:disable Metrics/ParameterLists -- transport options passed straight through to Connection
     def request(method, path, body_or_params = nil, headers: {}, raw: false, multipart: false)

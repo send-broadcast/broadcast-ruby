@@ -27,7 +27,6 @@ require_relative 'broadcast/resources/suppressions'
 require_relative 'broadcast/resources/global_suppressions'
 require_relative 'broadcast/resources/channel'
 require_relative 'broadcast/resources/file_assets'
-require_relative 'broadcast/resources/migration'
 
 # ActionMailer integration — only loaded when Rails is present
 if defined?(Rails::Railtie)
