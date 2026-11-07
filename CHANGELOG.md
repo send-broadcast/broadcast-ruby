@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-07
+
 ### Removed
 
 - **Breaking:** `client.migration` (`Broadcast::Resources::Migration`): `manifest`,
