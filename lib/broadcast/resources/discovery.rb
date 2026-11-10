@@ -19,6 +19,15 @@ module Broadcast
         get('/api/v1/status')
       end
 
+      # The channels this token can reach (Broadcast 3.1 or later): every
+      # channel for an admin token, its own channel for a channel token.
+      # Returns a Hash with `token_type` and `channels` (each `id`, `name`,
+      # `slug`, `active`). An admin token then names one with #with_channel or
+      # `broadcast_channel_id:`. A plugin developer token is refused.
+      def channels
+        get('/api/v1/channels')
+      end
+
       # Full capability manifest: platform version, token permissions, channel
       # status, the endpoint list the token can reach, rate limit, and usage tips.
       def prime

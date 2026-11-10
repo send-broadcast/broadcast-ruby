@@ -83,6 +83,23 @@ class TestDiscovery < Minitest::Test
     assert_instance_of Broadcast::Resources::Discovery, @client.discovery
   end
 
+  # Broadcast 3.1: every channel for an admin token, its own for a channel token
+  def test_channels_lists_the_channels_the_token_can_reach
+    stub_request(:get, "#{HOST}/api/v1/channels")
+      .to_return(status: 200, body: {
+        token_type: 'admin_cross_channel',
+        channels: [
+          { id: 1, name: 'Main', slug: 'main', active: true },
+          { id: 2, name: 'News', slug: 'news', active: true }
+        ]
+      }.to_json)
+
+    result = @client.channels
+    assert_equal 'admin_cross_channel', result['token_type']
+    assert_equal(%w[main news], result['channels'].map { |c| c['slug'] })
+    assert_equal result, @client.discovery.channels
+  end
+
   def test_channel_scope_is_applied
     stub_request(:get, %r{#{HOST}/api/v1/whoami.*broadcast_channel_id=42})
       .to_return(status: 200, body: {}.to_json)

@@ -81,6 +81,10 @@ module Broadcast
       discovery.openapi
     end
 
+    def channels
+      discovery.channels
+    end
+
     # --- Resource sub-clients ---
 
     def subscribers

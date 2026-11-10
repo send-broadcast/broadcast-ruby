@@ -2,7 +2,7 @@
 
 Official Ruby client for [Broadcast](https://sendbroadcast.net), the self-hosted email marketing platform.
 
-Works with any self-hosted Broadcast instance. Covers **122/122 API operations** of Broadcast 3.0, verified against the API's generated OpenAPI document.
+Works with any self-hosted Broadcast instance. Covers **123/123 API operations** of Broadcast 3.1, verified against the API's generated OpenAPI document.
 
 📖 **[Ruby SDK documentation](https://sendbroadcast.net/docs/ruby-sdk)** · [API reference](https://sendbroadcast.net/docs/api-authentication) · [All docs](https://sendbroadcast.net/docs)
 
@@ -1228,6 +1228,14 @@ end
 
 client.with_channel(2) do
   client.subscribers.list
+end
+```
+
+To find the channel ids, list the channels the token can reach (Broadcast 3.1 or later):
+
+```ruby
+client.channels['channels'].each do |channel|
+  client.with_channel(channel['id']) { client.subscribers.list }
 end
 ```
 
